@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     try {
       if (a.op === 'add') {
         const input = actionToInput(a, source);
-        if (!input.text) continue;
+        if (!input.text || input.text.length > 120 || input.text.includes('\n')) continue;
         const it = await s.create(input);
         applied.push(it.id);
       } else if (a.id && ids.has(a.id)) {
