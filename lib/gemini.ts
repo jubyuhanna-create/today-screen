@@ -165,7 +165,8 @@ async function call(parts: unknown[], schema: unknown, system: string) {
             temperature: 0.2,
             // Thinking off on 2.5 models: faster, and these answers do not need it. 2.0 models reject this field.
             ...(model.includes('2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-            maxOutputTokens: 4096,
+            // Newer models think before answering and that thinking counts here, so they get more room.
+            maxOutputTokens: model.includes('2.5') ? 4096 : 16384,
           },
         }),
       },
@@ -186,11 +187,13 @@ async function call(parts: unknown[], schema: unknown, system: string) {
     const data = await res.json();
     const cand = data?.candidates?.[0];
     const text: string | undefined = cand?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('');
-    if (!text) throw new Error(`Gemini returned nothing (${cand?.finishReason || data?.promptFeedback?.blockReason || 'no reason'})`);
     try {
+      if (!text) throw new Error('empty');
       return JSON.parse(text);
     } catch {
-      throw new Error(`Gemini reply was cut off (${cand?.finishReason || 'bad JSON'})`);
+      // Cut off or empty: let the next model try instead of failing.
+      last = `Gemini reply from ${model} was cut off (${cand?.finishReason || data?.promptFeedback?.blockReason || 'bad JSON'})`;
+      continue;
     }
   }
   throw new Error(last.includes('429') ? 'RESOURCE_EXHAUSTED: all free models are used up for today' : last || 'Gemini timeout');
