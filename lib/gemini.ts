@@ -112,6 +112,7 @@ async function call(parts: unknown[], schema: unknown, system: string) {
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
     {
       method: 'POST',
+      signal: AbortSignal.timeout(40000),
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
@@ -120,6 +121,8 @@ async function call(parts: unknown[], schema: unknown, system: string) {
           responseMimeType: 'application/json',
           responseSchema: schema,
           temperature: 0.2,
+          thinkingConfig: { thinkingBudget: 0 },
+          maxOutputTokens: 1500,
         },
       }),
     },
