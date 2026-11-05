@@ -4,7 +4,8 @@ import { actionToInput, think } from '@/lib/gemini';
 import { store } from '@/lib/store';
 import { createEvent, deleteEvent, isConnected, upcomingEvents, updateEvent } from '@/lib/google';
 import type { CalEvent } from '@/lib/types';
-import { TZ, isoDay } from '@/lib/time';
+import { TZ, isoDay, offset } from '@/lib/time';
+import { cleanText } from '@/lib/gemini';
 
 export const maxDuration = 60;
 
@@ -39,7 +40,16 @@ export async function POST(req: Request) {
     return Response.json({ error: why, detail: msg }, { status: 502 });
   }
 
+  console.log('think:', JSON.stringify({ intent: result.intent, transcript: result.transcript, actions: result.actions }));
   const ids = new Set(items.map((i) => i.id));
+  // Weaker fallback models sometimes leave fields empty: fill what we can instead of dropping the action.
+  for (const a of result.actions) {
+    if (a.op !== 'add_event') continue;
+    const x = a as typeof a & { title?: string; due_date?: string | null; due_time?: string | null };
+    if (!a.text) a.text = x.title || result.transcript || null;
+    if (!a.start && x.due_date) a.start = x.due_time ? `${x.due_date}T${x.due_time.slice(0, 5)}:00${offset()}` : x.due_date;
+    if (a.text) a.text = cleanText(a.text);
+  }
   const eventIds = new Set(events.map((e) => e.id));
   const applied: string[] = [];
   let calendarError = '';
@@ -61,7 +71,10 @@ export async function POST(req: Request) {
         }
         const ev = { title: a.text || undefined, start: a.start || undefined, end: a.end, allDay: !!a.all_day, location: a.location };
         if (a.op === 'add_event') {
-          if (!ev.title || !ev.start || ev.title.length > 120) continue;
+          if (!ev.title || !ev.start || ev.title.length > 120) {
+            calendarError = 'Could not add the event: no time was understood. Say the day and the hour';
+            continue;
+          }
           applied.push((await createEvent(ev)).id);
         } else if (a.event_id && eventIds.has(a.event_id)) {
           if (a.op === 'delete_event') await deleteEvent(a.event_id);
@@ -94,7 +107,7 @@ export async function POST(req: Request) {
   return Response.json({
     transcript: result.transcript,
     language: result.language,
-    reply: calendarError || result.reply,
+    reply: calendarError || (result.intent === 'organize' && result.actions.length > 0 && applied.length === 0 ? 'Nothing was saved. Try saying it again' : result.reply),
     intent: result.intent,
     answer: result.answer,
     schedule_day: result.intent === 'schedule' ? result.schedule_day : null,

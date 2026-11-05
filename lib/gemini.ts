@@ -245,10 +245,16 @@ export async function summarize(items: Item[], events: CalEvent[] = [], calendar
   return String(r.summary || '');
 }
 
+/** Drops an added translation like "أرتب غرفتي (Tidy my room)" when the line is Arabic or Hebrew. */
+export function cleanText(t: string) {
+  if (!/[\u0590-\u06FF]/.test(t)) return t.trim();
+  return t.replace(/\s*\([^()]*[A-Za-z][^()]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim() || t.trim();
+}
+
 export function actionToInput(a: Action, source: string): ItemInput {
   const out: ItemInput = {};
   if (a.kind) out.kind = a.kind;
-  if (a.text) out.text = a.text;
+  if (a.text) out.text = cleanText(a.text);
   if (a.priority && [1, 2, 3].includes(a.priority)) out.priority = a.priority as 1 | 2 | 3;
   if (a.due_date !== undefined && (a.due_date === null || /^\d{4}-\d{2}-\d{2}$/.test(a.due_date))) out.due_date = a.due_date;
   if (a.due_time !== undefined && (a.due_time === null || /^\d{1,2}:\d{2}/.test(a.due_time))) out.due_time = a.due_time;
