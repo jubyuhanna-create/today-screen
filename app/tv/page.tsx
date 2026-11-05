@@ -5,7 +5,10 @@ import { api } from '@/lib/client/api';
 import { useLiveState, useNow } from '@/lib/client/live';
 import { group, relTime, shortDay } from '@/lib/client/view';
 import { Recorder } from '@/lib/client/wav';
+import { speak, stopSpeaking } from '@/lib/client/speak';
+import { DAYS, keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
 import type { Item } from '@/lib/types';
+import { ScheduleView } from '@/components/ScheduleView';
 import './tv.css';
 
 const TZ = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
@@ -18,6 +21,7 @@ type Voice =
   | { s: 'listening' }
   | { s: 'thinking' }
   | { s: 'done'; transcript: string; reply: string }
+  | { s: 'answer'; transcript: string; answer: string }
   | { s: 'error'; message: string };
 
 declare global {
@@ -28,8 +32,8 @@ declare global {
       audio: (b64: string, mime?: string) => void;
       cancel: () => void;
       error: (msg: string) => void;
+      back: () => void;
     };
-    TodayNative?: { toggle: () => void };
   }
 }
 
@@ -63,17 +67,36 @@ function Screen() {
   const weather = useWeather();
   const recRef = useRef<Recorder | null>(null);
   const hideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [schedule, setSchedule] = useState<DayKey | null>(null);
+  const [schedTouch, setSchedTouch] = useState(0);
+
+  const openSchedule = useCallback((d: DayKey) => { setSchedule(d); setSchedTouch(Date.now()); }, []);
+  const closeAll = useCallback(() => {
+    setSchedule(null);
+    setVoice((v) => (v.s === 'answer' || v.s === 'done' || v.s === 'error' ? { s: 'idle' } : v));
+    stopSpeaking();
+  }, []);
 
   const send = useCallback(async (audio: string, mime = 'audio/wav') => {
     setVoice({ s: 'thinking' });
     try {
       const r = await api.think({ audio, mime, source: 'tv' });
-      await refresh();
-      setVoice({ s: 'done', transcript: r.transcript, reply: r.reply || 'Nothing to change' });
+      refresh();
+      if (r.intent === 'schedule' && r.schedule_day) {
+        openSchedule(r.schedule_day as DayKey);
+        setVoice({ s: 'idle' });
+        speak(r.answer);
+      } else if (r.intent === 'answer' && r.answer) {
+        setVoice({ s: 'answer', transcript: r.transcript, answer: r.answer });
+        speak(r.answer);
+      } else {
+        setVoice({ s: 'done', transcript: r.transcript, reply: r.reply || 'Nothing to change' });
+        if (r.answer) speak(r.answer);
+      }
     } catch (e) {
       setVoice({ s: 'error', message: e instanceof Error ? e.message : 'Try again' });
     }
-  }, [refresh]);
+  }, [refresh, openSchedule]);
 
   // Hooks the Android TV app calls into.
   useEffect(() => {
@@ -83,9 +106,37 @@ function Screen() {
       audio: (b64, mime) => send(b64, mime),
       cancel: () => setVoice({ s: 'idle' }),
       error: (message) => setVoice({ s: 'error', message }),
+      back: closeAll,
     };
     return () => { delete window.__today; };
-  }, [send]);
+  }, [send, closeAll]);
+
+  // Remote arrows: right opens the timetable, left and right change the day, Back closes.
+  useEffect(() => {
+    const order = DAYS.map((d) => d.key);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSchedTouch(Date.now());
+        setSchedule((cur) => {
+          if (!cur) return nextSchoolDay(new Date(), TZ);
+          const i = order.indexOf(cur) + (e.key === 'ArrowRight' ? 1 : -1);
+          return order[(i + order.length) % order.length];
+        });
+      } else if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack') {
+        closeAll();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [closeAll]);
+
+  // The timetable closes itself after a minute and a half untouched.
+  useEffect(() => {
+    if (!schedule) return;
+    const t = setTimeout(() => setSchedule(null), 90000);
+    return () => clearTimeout(t);
+  }, [schedule, schedTouch]);
 
   // In a normal browser (testing on a laptop), Enter or Space records with the browser mic.
   useEffect(() => {
@@ -116,8 +167,9 @@ function Screen() {
 
   useEffect(() => {
     if (hideRef.current) clearTimeout(hideRef.current);
-    if (voice.s === 'done' || voice.s === 'error') {
-      hideRef.current = setTimeout(() => setVoice({ s: 'idle' }), voice.s === 'done' ? 6000 : 5000);
+    if (voice.s === 'done' || voice.s === 'error' || voice.s === 'answer') {
+      const ms = voice.s === 'answer' ? 25000 : voice.s === 'done' ? 6000 : 5000;
+      hideRef.current = setTimeout(() => setVoice({ s: 'idle' }), ms);
     }
   }, [voice]);
 
@@ -129,6 +181,10 @@ function Screen() {
   const shown = forced || phase;
   const time = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(now);
   const date = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric' }).format(now);
+
+  const todayKey = keyForJsDay(new Date(now.toLocaleString('en-US', { timeZone: TZ })).getDay());
+  const tomorrowKey = keyForJsDay((new Date(now.toLocaleString('en-US', { timeZone: TZ })).getDay() + 1) % 7);
+  const schedLabel = schedule === todayKey ? 'Today' : schedule === tomorrowKey ? 'Tomorrow' : 'Timetable';
 
   const visible = g ? g.todayTasks.slice(0, 7) : [];
   const hidden = g ? g.todayTasks.length - visible.length : 0;
@@ -198,6 +254,13 @@ function Screen() {
         </div>
       </section>
 
+      {schedule && (
+        <div className="tv-sched">
+          <ScheduleView variant="tv" day={schedule} label={schedLabel} onDay={openSchedule} />
+          <p className="tv-sched-hint">Left and right change the day. Back closes.</p>
+        </div>
+      )}
+
       <VoiceBar voice={voice} level={level} />
       {error && <div className="tv-offline">Reconnecting</div>}
       {state?.demo && <div className="tv-demo">Demo data. Add your Supabase keys to go live.</div>}
@@ -223,7 +286,7 @@ function Row({ item, today, now }: { item: Item; today: string; now: Date }) {
 
 function VoiceBar({ voice, level }: { voice: Voice; level: number }) {
   if (voice.s === 'idle') {
-    return <div className="tv-hint">Press OK to talk</div>;
+    return <div className="tv-hint">OK to talk, right arrow for your timetable</div>;
   }
   return (
     <div className={`tv-voice is-${voice.s}`} role="status">
@@ -241,6 +304,12 @@ function VoiceBar({ voice, level }: { voice: Voice; level: number }) {
         </>
       )}
       {voice.s === 'error' && <span>{voice.message}</span>}
+      {voice.s === 'answer' && (
+        <span className="tv-answer">
+          <span className="tv-answer-q tv-bidi" dir="auto">{voice.transcript}</span>
+          <span className="tv-answer-a tv-bidi" dir="auto">{voice.answer}</span>
+        </span>
+      )}
     </div>
   );
 }

@@ -8,7 +8,12 @@ export async function ping() {
   try {
     await fetch(`${url}/realtime/v1/api/broadcast`, {
       method: 'POST',
-      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      // New sb_secret_ keys go in apikey only. Old JWT service_role keys also need Authorization.
+      headers: {
+        apikey: key,
+        ...(key.startsWith('eyJ') ? { Authorization: `Bearer ${key}` } : {}),
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ messages: [{ topic: channelName(), event: 'sync', payload: { at: Date.now() } }] }),
     });
   } catch {

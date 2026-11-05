@@ -36,7 +36,26 @@ html:has(.ph) { background: #f2f2f7; }
 .ph-date { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .ph-titlebar { display: flex; align-items: baseline; justify-content: space-between; }
 .ph-titlebar h1 { margin: 2px 0 0; font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; }
-.ph-count { font-size: 17px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ph-count { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ph-tt {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px; border-radius: 17px;
+  background: var(--card); color: var(--amber); font-size: 15px; font-weight: 600;
+}
+.ph-tt svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.ph {
+  --sch-ink: var(--ink); --sch-ink-2: var(--ink-2); --sch-ink-3: var(--ink-3); --sch-bg: var(--card);
+  --sch-block: var(--card); --sch-line: var(--fill); --sch-accent: var(--amber);
+  --sch-mine-bg: rgba(255, 149, 0, 0.14); --sch-mine-ink: #c86a00;
+}
+@media (prefers-color-scheme: dark) { .ph { --sch-mine-bg: rgba(255, 159, 10, 0.18); --sch-mine-ink: #ffb340; } }
+.ph-sched { max-height: 92dvh; overflow-y: auto; gap: 8px; }
+.ph-sched .sch-head { padding: 0 4px; }
+
+.ph-answer { padding-top: 26px; gap: 10px; }
+.ph-answer-q { margin: 0; font-size: 15px; color: var(--ink-2); }
+.ph-answer-a { margin: 0 0 8px; font-size: 21px; line-height: 1.4; font-weight: 500; letter-spacing: -0.015em; }
 .ph-summary { margin: 10px 0 0; font-size: 16px; color: var(--ink-2); max-width: 40ch; }
 .ph-demo { margin: 10px 0 0; font-size: 13px; color: var(--amber); }
 

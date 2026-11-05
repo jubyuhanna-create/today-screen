@@ -8,9 +8,19 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
   --ink-2: rgba(245, 247, 250, 0.62);
   --ink-3: rgba(245, 247, 250, 0.34);
   --line: rgba(245, 247, 250, 0.12);
-  --panel: rgba(0, 0, 0, 0.28);
+  --panel: #10263a;
   --accent: #ffd08a;
   --summary: rgba(245, 247, 250, 0.86);
+  --accent-soft: rgba(255, 208, 138, 0.18);
+  --sch-ink: var(--ink);
+  --sch-ink-2: var(--ink-2);
+  --sch-ink-3: var(--ink-3);
+  --sch-bg: var(--bg);
+  --sch-block: rgba(255, 255, 255, 0.07);
+  --sch-line: rgba(255, 255, 255, 0.1);
+  --sch-accent: var(--accent);
+  --sch-mine-bg: var(--accent-soft);
+  --sch-mine-ink: var(--accent);
   position: relative;
   height: 100vh;
   overflow: hidden;
@@ -160,11 +170,11 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 .tv-demo { left: 6.5rem; right: auto; }
 
 /* Morning, 07 to 12: deep sea blue, warm sand accent */
-.tv-morning { --bg: #16324a; --accent: #ffd08a; }
+.tv-morning { --bg: #16324a; --accent: #ffd08a; --accent-soft: rgba(255, 208, 138, 0.18); --panel: #10263a; }
 /* Afternoon, 12 to 17: deep sage green, soft gold */
-.tv-afternoon { --bg: #1c3a34; --accent: #f2d07c; }
+.tv-afternoon { --bg: #1c3a34; --accent: #f2d07c; --accent-soft: rgba(242, 208, 124, 0.18); --panel: #132b26; }
 /* Evening, 17 to 23: dusk violet, soft coral */
-.tv-evening { --bg: #28234a; --accent: #ffb197; }
+.tv-evening { --bg: #28234a; --accent: #ffb197; --accent-soft: rgba(255, 177, 151, 0.18); --panel: #1c1838; }
 
 /* Night, 23 to 07: black and white only, dimmed so it does not light the room */
 .tv-night {
@@ -175,6 +185,7 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
   --line: #1a1a1a;
   --panel: #161616;
   --accent: #e6e6e6;
+  --accent-soft: rgba(255, 255, 255, 0.1);
   --summary: #9a9a9a;
 }
 .tv-night .tv-right, .tv-night .tv-summary, .tv-night .tv-reminder, .tv-night .tv-hint { opacity: 0.6; }
@@ -186,3 +197,23 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 @keyframes tv-pulse { 50% { opacity: 0.55; } }
 @keyframes tv-shimmer { to { background-position: -200% 0; } }
 .tv-night .tv-date { color: #a8a8a8; }
+
+/* Timetable, full screen over the dashboard */
+.tv-sched {
+  position: absolute; inset: 0; z-index: 5;
+  background: var(--bg);
+  padding: 4.5rem 6.5rem 5.5rem;
+  display: flex; flex-direction: column;
+  animation: tv-in 0.4s ease both;
+}
+.tv-sched .sch { flex: 1; min-height: 0; font-size: 1.15rem; --sch-unit: minmax(0, 1fr); }
+.tv-sched .sch-grid { flex: 1; min-height: 0; }
+.tv-sched-hint { position: absolute; left: 50%; bottom: 2.4rem; transform: translateX(-50%); margin: 0; font-size: 1.3rem; color: var(--ink-3); }
+.tv-night .tv-sched { opacity: 0.8; }
+
+/* Answers */
+.tv-voice.is-answer { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); border-radius: 2rem; padding: 2rem 2.8rem; max-width: 64%; bottom: 3rem; }
+.tv-answer { display: flex; flex-direction: column; gap: 0.8rem; min-width: 0; }
+.tv-answer-q { font-size: 1.5rem; color: var(--ink-2); }
+.tv-answer-a { font-size: 2.5rem; line-height: 1.35; letter-spacing: -0.01em; }
+.tv-answer .tv-bidi { text-align: start; }

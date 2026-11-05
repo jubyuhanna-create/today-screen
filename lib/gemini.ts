@@ -1,5 +1,6 @@
 import type { Item, ItemInput } from './types';
 import { addDays, isoDay, nowDescription, offset } from './time';
+import { scheduleForPrompt } from './schedule';
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
@@ -16,6 +17,9 @@ export interface Action {
 }
 
 export interface ThinkResult {
+  intent: 'organize' | 'answer' | 'schedule';
+  answer: string;
+  schedule_day: string | null;
   transcript: string;
   language: string;
   actions: Action[];
@@ -23,10 +27,18 @@ export interface ThinkResult {
   summary: string;
 }
 
-const SYSTEM = `You run a personal day screen for one person. He talks to it in Palestinian Arabic, Hebrew, English, or a mix.
-You receive what he said (audio or text) plus his current open items. Turn it into precise changes.
+const SYSTEM = `You are the assistant inside a personal day screen for one person, a 12th grade electronics student in Nazareth. He talks to it in Palestinian Arabic, Hebrew, English, or a mix.
+You receive what he said (audio or text), his current open items, and his school timetable.
 
-Rules:
+First decide intent:
+- organize: he is adding, finishing, moving or changing tasks, ideas or reminders.
+- schedule: he wants to SEE his school timetable for a day ("جدول بكرا", "what do I have Saturday", "מערכת של יום שלישי"). Set schedule_day to mon, tue, wed, thu, fri or sat. "Tomorrow" and "today" are relative to now; after 15:00 "the schedule" with no day means the next school day. Sunday has no school, so Sunday means Monday. Also write a one sentence answer summarizing that day.
+- answer: anything else. A question, a chat, a calculation, advice, a fact. Answer it yourself like a smart friend.
+One message can be organize plus a question; then do the actions and also fill answer.
+
+answer rules: in the SAME language and dialect he used (Palestinian Arabic stays Palestinian Arabic, Hebrew stays Hebrew). Short, it is read on a TV and spoken aloud: at most 3 sentences, no markdown, no lists, no emoji. Empty string for pure organize.
+
+Task rules:
 - Write every item's text in the SAME language he spoke for that item. Arabic stays Arabic (keep his dialect words), Hebrew stays Hebrew, English stays English. Never translate. Tidy it into a short clear line, max about 10 words, no trailing period.
 - text is ONLY the item itself. Never put notes, reasoning, translations or explanations in any field.
 - One thought can produce several actions. "I finished X and add Y" is complete + add.
@@ -41,12 +53,15 @@ Rules:
 - If what he said contains nothing actionable, return no actions.
 - transcript: what he said, verbatim, in the original language.
 - language: ar, he, en, or mixed.
-- reply: very short English confirmation of what you did, under 8 words, like "Added 2 tasks, moved 1 to tomorrow". Empty if nothing.
+- reply: for organize, very short English confirmation of what you did, under 8 words, like "Added 2 tasks, moved 1 to tomorrow". Empty if nothing.
 - summary: one or two calm English sentences for the top of his screen about today AFTER your changes. What matters most, anything with a time. Under 30 words. No greetings, no exclamation marks, no emoji.`;
 
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
+    intent: { type: 'STRING', enum: ['organize', 'answer', 'schedule'] },
+    answer: { type: 'STRING' },
+    schedule_day: { type: 'STRING', enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'], nullable: true },
     transcript: { type: 'STRING' },
     language: { type: 'STRING' },
     actions: {
@@ -70,7 +85,8 @@ const SCHEMA = {
     reply: { type: 'STRING' },
     summary: { type: 'STRING' },
   },
-  required: ['transcript', 'language', 'actions', 'reply', 'summary'],
+  required: ['intent', 'answer', 'transcript', 'language', 'actions', 'reply', 'summary'],
+  propertyOrdering: ['transcript', 'language', 'intent', 'actions', 'answer', 'schedule_day', 'reply', 'summary'],
 };
 
 function context(items: Item[]) {
@@ -83,7 +99,10 @@ function context(items: Item[]) {
     }));
   return `Now: ${nowDescription()}. Today is ${today}, tomorrow is ${addDays(today, 1)}. UTC offset ${offset()}.
 Open items:
-${JSON.stringify(open)}`;
+${JSON.stringify(open)}
+
+School timetable:
+${scheduleForPrompt()}`;
 }
 
 async function call(parts: unknown[], schema: unknown, system: string) {
@@ -128,6 +147,8 @@ export async function think(
   }
   const r = (await call(parts, SCHEMA, SYSTEM)) as ThinkResult;
   r.actions = Array.isArray(r.actions) ? r.actions : [];
+  r.answer = typeof r.answer === 'string' ? r.answer : '';
+  if (!['organize', 'answer', 'schedule'].includes(r.intent)) r.intent = r.actions.length ? 'organize' : 'answer';
   return r;
 }
 

@@ -1,0 +1,47 @@
+/* Shared by the TV (em scales with the TV rem) and the phone. */
+.sch { --sch-unit: 4.9em; display: flex; flex-direction: column; gap: 1.4em; }
+.sch-phone { --sch-unit: 3.6em; font-size: 16px; gap: 1em; }
+
+.sch-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+.sch-label { margin: 0; font-size: 1em; font-weight: 600; color: var(--sch-accent); }
+.sch-day { margin: 0.1em 0 0; font-size: 2.6em; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+.sch-day span { font-family: 'IBM Plex Sans Arabic', sans-serif; font-weight: 400; font-size: 0.62em; color: var(--sch-ink-2); margin-left: 0.4em; letter-spacing: 0; }
+.sch-phone .sch-day { font-size: 1.9em; }
+
+.sch-days { display: flex; gap: 0.25em; padding: 0.25em; border-radius: 99em; background: var(--sch-block); }
+.sch-days button {
+  border: 0; background: none; color: var(--sch-ink-2); cursor: pointer;
+  font: inherit; font-size: 0.95em; font-weight: 600; padding: 0.45em 0.85em; border-radius: 99em;
+}
+.sch-days button.on { background: var(--sch-ink); color: var(--sch-bg); }
+.sch-phone .sch-days { width: 100%; justify-content: space-between; }
+.sch-phone .sch-days button { flex: 1; padding: 0.5em 0; font-size: 0.85em; }
+
+.sch-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35em; }
+.sch-block {
+  display: flex; align-items: center; gap: 1.1em; min-height: 0; overflow: hidden;
+  padding: 0 1.2em 0 0.9em; border-radius: 0.8em; background: var(--sch-block);
+}
+.sch-block.is-free { background: none; box-shadow: inset 0 0 0 1px var(--sch-line); }
+.sch-block.is-mine { background: var(--sch-mine-bg); }
+
+.sch-num {
+  flex: none; width: 2.6em; display: flex; flex-direction: column; align-items: center;
+  font-size: 1.35em; font-weight: 300; font-variant-numeric: tabular-nums; color: var(--sch-ink-2); letter-spacing: -0.02em;
+}
+.sch-num small { font-size: 0.55em; font-weight: 500; }
+.sch-free { color: var(--sch-ink-3); font-size: 1.05em; }
+
+.sch-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25em; text-align: right; font-family: 'IBM Plex Sans Arabic', sans-serif; }
+.sch-subject { font-size: 1.7em; font-weight: 600; line-height: 1.15; }
+.sch-block.is-mine .sch-subject { color: var(--sch-mine-ink); }
+.sch-options { display: flex; flex-wrap: wrap; gap: 0.35em; justify-content: flex-start; }
+.sch-opt { font-size: 1.15em; font-weight: 500; padding: 0.12em 0.6em; border-radius: 0.45em; background: var(--sch-line); }
+.sch-opt.is-mine { background: var(--sch-mine-bg); color: var(--sch-mine-ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--sch-mine-ink); }
+.sch-teachers { font-size: 0.95em; color: var(--sch-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sch-phone .sch-subject { font-size: 1.15em; }
+.sch-phone .sch-opt { font-size: 0.85em; }
+.sch-phone .sch-teachers { font-size: 0.8em; }
+.sch-phone .sch-num { font-size: 1.05em; width: 2.2em; }
+.sch-phone .sch-block { gap: 0.6em; padding: 0 0.9em 0 0.5em; }

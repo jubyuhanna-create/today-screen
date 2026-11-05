@@ -52,6 +52,9 @@ export async function POST(req: Request) {
     transcript: result.transcript,
     language: result.language,
     reply: result.reply,
+    intent: result.intent,
+    answer: result.answer,
+    schedule_day: result.intent === 'schedule' ? result.schedule_day : null,
     changed: applied,
   });
 }

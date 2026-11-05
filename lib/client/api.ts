@@ -1,6 +1,16 @@
 'use client';
 import type { Item, ItemInput, State } from '../types';
 
+export interface ThinkReply {
+  transcript: string;
+  reply: string;
+  language: string;
+  intent: 'organize' | 'answer' | 'schedule';
+  answer: string;
+  schedule_day: string | null;
+  changed: string[];
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -23,7 +33,7 @@ export const api = {
   update: (id: string, input: ItemInput) => req<Item>(`/api/items/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
   remove: (id: string) => req<{ ok: true }>(`/api/items/${id}`, { method: 'DELETE' }),
   think: (body: { text?: string; audio?: string; mime?: string; source: 'tv' | 'phone' }) =>
-    req<{ transcript: string; reply: string; language: string; changed: string[] }>('/api/think', {
+    req<ThinkReply>('/api/think', {
       method: 'POST',
       body: JSON.stringify(body),
     }),

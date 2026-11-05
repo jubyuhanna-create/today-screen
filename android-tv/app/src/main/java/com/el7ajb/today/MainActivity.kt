@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.speech.tts.TextToSpeech
 import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
@@ -18,11 +19,14 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.util.Locale
 
 class MainActivity : Activity() {
 
     private lateinit var web: WebView
     private var recorder: VoiceRecorder? = null
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
     private val main = Handler(Looper.getMainLooper())
     private val maxRecording = Runnable { stopRecording() }
     private val retry = Runnable { web.loadUrl(BuildConfig.DASHBOARD_URL) }
@@ -60,11 +64,32 @@ class MainActivity : Activity() {
         web.loadUrl(BuildConfig.DASHBOARD_URL)
 
         if (!hasMic()) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+        tts = TextToSpeech(this) { status -> ttsReady = status == TextToSpeech.SUCCESS }
+    }
+
+    /** Reads an answer aloud in Arabic, Hebrew or English, if the Mi Box has that voice. */
+    private fun say(text: String) {
+        val t = tts ?: return
+        if (!ttsReady || text.isBlank()) return
+        val locale = when {
+            text.any { it in '\u0600'..'\u06FF' } -> Locale("ar")
+            text.any { it in '\u0590'..'\u05FF' } -> Locale("iw")
+            else -> Locale.US
+        }
+        val ok = t.setLanguage(locale)
+        if (ok == TextToSpeech.LANG_MISSING_DATA || ok == TextToSpeech.LANG_NOT_SUPPORTED) return
+        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "answer")
     }
 
     inner class Bridge {
         @JavascriptInterface
         fun toggle() { main.post { toggleRecording() } }
+
+        @JavascriptInterface
+        fun speak(text: String) { main.post { say(text) } }
+
+        @JavascriptInterface
+        fun stopSpeaking() { main.post { tts?.stop() } }
     }
 
     // The remote: OK talks, Back cancels a recording, Menu reloads the page.
@@ -76,7 +101,10 @@ class MainActivity : Activity() {
                 return true
             }
             KeyEvent.KEYCODE_BACK -> {
-                if (event.action == KeyEvent.ACTION_UP && recorder != null) cancelRecording()
+                if (event.action == KeyEvent.ACTION_UP) {
+                    if (recorder != null) cancelRecording()
+                    else js("window.__today&&window.__today.back()") // closes the timetable or an answer
+                }
                 return true // the screen stays up; the Home button still leaves
             }
             KeyEvent.KEYCODE_MENU -> {
@@ -92,6 +120,7 @@ class MainActivity : Activity() {
     }
 
     private fun startRecording() {
+        tts?.stop()
         if (!hasMic()) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
             js("window.__today&&window.__today.error('Allow the microphone, then press OK again')")
@@ -162,6 +191,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         main.removeCallbacksAndMessages(null)
+        tts?.shutdown()
         web.destroy()
         super.onDestroy()
     }

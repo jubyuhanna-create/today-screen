@@ -7,6 +7,10 @@ import { group, relTime, shortDay } from '@/lib/client/view';
 import { Recorder } from '@/lib/client/wav';
 import { addDays } from '@/lib/time';
 import type { Item, ItemInput } from '@/lib/types';
+import { speak, stopSpeaking } from '@/lib/client/speak';
+import type { ThinkReply } from '@/lib/client/api';
+import { keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
+import { ScheduleView } from '@/components/ScheduleView';
 import './phone.css';
 
 const TZ = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
@@ -19,6 +23,21 @@ export default function Phone() {
   const [rec, setRec] = useState<'off' | 'on' | 'sending'>('off');
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
+  const [schedule, setSchedule] = useState<DayKey | null>(null);
+  const [answer, setAnswer] = useState<{ q: string; a: string } | null>(null);
+
+  // What happens after the AI answers, the same for typing and talking.
+  const handle = (r: ThinkReply, spoken: boolean) => {
+    if (r.intent === 'schedule' && r.schedule_day) {
+      setSchedule(r.schedule_day as DayKey);
+      if (spoken) speak(r.answer);
+    } else if (r.intent === 'answer' && r.answer) {
+      setAnswer({ q: r.transcript, a: r.answer });
+      if (spoken) speak(r.answer);
+    } else {
+      setToast(r.reply || 'Nothing to change');
+    }
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -50,7 +69,7 @@ export default function Phone() {
     setBusy(true);
     try {
       const r = await api.think({ text, source: 'phone' });
-      setToast(r.reply || 'Nothing to change');
+      handle(r, false);
       setDraft('');
     } catch {
       // AI not reachable: still keep the thought, as a plain task for today.
@@ -66,8 +85,12 @@ export default function Phone() {
         <p className="ph-date">{date}</p>
         <div className="ph-titlebar">
           <h1>Today</h1>
-          {g.total > 0 && <span className="ph-count">{g.doneCount}/{g.total}</span>}
+          <button className="ph-tt" onClick={() => setSchedule(nextSchoolDay(new Date(), TZ))}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+            Timetable
+          </button>
         </div>
+        {g.total > 0 && <p className="ph-count">{g.doneCount} of {g.total} done</p>}
         {state.summary && <p className="ph-summary">{state.summary.text}</p>}
         {state.demo && <p className="ph-demo">Demo data. Add your Supabase keys to go live.</p>}
       </header>
@@ -139,7 +162,7 @@ export default function Phone() {
             setRec('sending');
             try {
               const r = await api.think({ audio, mime, source: 'phone' });
-              setToast(r.reply || 'Nothing to change');
+              handle(r, true);
             } catch (e) {
               setToast(msg(e));
             }
@@ -167,6 +190,36 @@ export default function Phone() {
           }}
           onDelete={editing === 'new' ? undefined : () => { setEditing(null); remove(editing.id); }}
         />
+      )}
+
+      {schedule && (
+        <div className="ph-sheet-wrap" onClick={(e) => e.target === e.currentTarget && setSchedule(null)}>
+          <div className="ph-sheet ph-sched">
+            <div className="ph-sheet-bar">
+              <span />
+              <button className="ph-link ph-link-strong" onClick={() => setSchedule(null)}>Done</button>
+            </div>
+            <ScheduleView
+              variant="phone"
+              day={schedule}
+              onDay={setSchedule}
+              label={schedule === keyForJsDay(localDay()) ? 'Today' : schedule === keyForJsDay((localDay() + 1) % 7) ? 'Tomorrow' : 'Timetable'}
+            />
+          </div>
+        </div>
+      )}
+
+      {answer && (
+        <div className="ph-sheet-wrap" onClick={(e) => { if (e.target === e.currentTarget) { setAnswer(null); stopSpeaking(); } }}>
+          <div className="ph-sheet ph-answer">
+            <p className="ph-answer-q ph-bidi" dir="auto">{answer.q}</p>
+            <p className="ph-answer-a ph-bidi" dir="auto">{answer.a}</p>
+            <div className="ph-rec-actions">
+              <button className="ph-btn" onClick={() => speak(answer.a)}>Read aloud</button>
+              <button className="ph-btn ph-btn-primary" onClick={() => { setAnswer(null); stopSpeaking(); }}>Done</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && <div className="ph-toast" role="status">{toast}</div>}
@@ -350,6 +403,10 @@ function Seg<T extends string>({ value, onChange, options }: { value: T; onChang
       ))}
     </div>
   );
+}
+
+function localDay() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: TZ })).getDay();
 }
 
 function localTime(iso: string) {
