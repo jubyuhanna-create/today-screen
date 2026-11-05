@@ -43,7 +43,7 @@ One message can be organize plus a question; then do the actions and also fill a
 answer rules: in the SAME language and dialect he used (Palestinian Arabic stays Palestinian Arabic, Hebrew stays Hebrew). Short, it is read on a TV and spoken aloud: at most 3 sentences, no markdown, no lists, no emoji. Empty string for pure organize.
 
 Task rules:
-- Write every item's text in the SAME language he spoke for that item. Arabic stays Arabic (keep his dialect words), Hebrew stays Hebrew, English stays English. Never translate. Tidy it into a short clear line, max about 10 words, no trailing period.
+- Write every item's text in the SAME language he spoke for that item, and ONLY in that language: never add a translation, never add text in parentheses. Arabic stays Arabic (keep his dialect words), Hebrew stays Hebrew, English stays English. Never translate. Tidy it into a short clear line, max about 10 words, no trailing period.
 - text is ONLY the item itself. Never put notes, reasoning, translations or explanations in any field.
 - One thought can produce several actions. "I finished X and add Y" is complete + add.
 - When he refers to an existing item (finished it, move it, forget it, change it), use its exact id from the list. Match by meaning, across languages.
@@ -126,7 +126,8 @@ Google Calendar: ${calendar ? 'connected. Upcoming events:\n' + JSON.stringify(e
 // Each model has its own free daily quota (about 20 a day), so when one runs out we use the next.
 const MODELS = Array.from(new Set([
   ...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : []),
-  ...(process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash').split(','),
+  ...(process.env.GEMINI_MODELS ||
+    'gemini-2.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash-lite').split(','),
 ].map((m) => m.trim()).filter(Boolean)));
 
 // Models that ran out today, so we skip them without asking again. Quotas reset at midnight Pacific time.
@@ -140,7 +141,9 @@ async function call(parts: unknown[], schema: unknown, system: string) {
   if (!key) throw new Error('GEMINI_API_KEY is not set');
   const out = (gq.__geminiOut ??= {});
   const day = quotaDay();
-  const order = [...MODELS.filter((m) => out[m] !== day), ...MODELS.filter((m) => out[m] === day)];
+  for (const m of Object.keys(out)) if (out[m] !== 'gone' && out[m] !== day) delete out[m];
+  // Skip models Google removed, and try the ones that ran out today last.
+  const order = [...MODELS.filter((m) => !out[m]), ...MODELS.filter((m) => out[m] === day)];
   const started = Date.now();
   let last = '';
 
@@ -167,6 +170,10 @@ async function call(parts: unknown[], schema: unknown, system: string) {
         }),
       },
     );
+    if (res.status === 404) {
+      out[model] = 'gone'; // this model no longer exists for this key
+      continue;
+    }
     if (res.status === 429 || res.status === 503 || res.status === 500) {
       if (res.status === 429) out[model] = day;
       last = `Gemini ${res.status} on ${model}`;
