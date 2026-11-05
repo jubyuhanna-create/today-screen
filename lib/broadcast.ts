@@ -8,6 +8,7 @@ export async function ping() {
   try {
     await fetch(`${url}/realtime/v1/api/broadcast`, {
       method: 'POST',
+      signal: AbortSignal.timeout(3000),
       // New sb_secret_ keys go in apikey only. Old JWT service_role keys also need Authorization.
       headers: {
         apikey: key,
