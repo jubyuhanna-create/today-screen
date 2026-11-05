@@ -28,6 +28,7 @@ You receive what he said (audio or text) plus his current open items. Turn it in
 
 Rules:
 - Write every item's text in the SAME language he spoke for that item. Arabic stays Arabic (keep his dialect words), Hebrew stays Hebrew, English stays English. Never translate. Tidy it into a short clear line, max about 10 words, no trailing period.
+- text is ONLY the item itself. Never put notes, reasoning, translations or explanations in any field.
 - One thought can produce several actions. "I finished X and add Y" is complete + add.
 - When he refers to an existing item (finished it, move it, forget it, change it), use its exact id from the list. Match by meaning, across languages.
 - kind: task = something to do. idea = a thought, no date. reminder = something that must ping him at a time.
