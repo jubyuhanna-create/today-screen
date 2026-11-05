@@ -147,14 +147,23 @@ async function call(parts: unknown[], schema: unknown, system: string) {
   const started = Date.now();
   let last = '';
 
-  for (const model of order) {
-    const left = 50000 - (Date.now() - started);
-    if (left < 5000) break; // stay inside Vercel's 60 seconds
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+  const lowThink = (gq as { __noLevel?: Record<string, boolean> }).__noLevel ??= {};
+  for (let i = 0; i < order.length; i++) {
+    const model = order[i];
+    const left = 52000 - (Date.now() - started);
+    if (left < 4000) break; // stay inside Vercel's 60 seconds
+    const thinking = model.includes('2.5')
+      ? { thinkingConfig: { thinkingBudget: 0 } } // off: faster, these answers do not need it
+      : model.startsWith('gemini-3') && !lowThink[model]
+        ? { thinkingConfig: { thinkingLevel: 'low' } } // Gemini 3 cannot turn thinking off, so keep it short
+        : {}; // 2.0 models have no thinking
+    let res: Response;
+    try {
+      res = await fetch(
+      `${process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        signal: AbortSignal.timeout(Math.min(30000, left)),
+        signal: AbortSignal.timeout(Math.min(18000, left)),
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
@@ -163,14 +172,22 @@ async function call(parts: unknown[], schema: unknown, system: string) {
             responseMimeType: 'application/json',
             responseSchema: schema,
             temperature: 0.2,
-            // Thinking off on 2.5 models: faster, and these answers do not need it. 2.0 models reject this field.
-            ...(model.includes('2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            ...thinking,
             // Newer models think before answering and that thinking counts here, so they get more room.
             maxOutputTokens: model.includes('2.5') ? 4096 : 16384,
           },
         }),
       },
-    );
+      );
+    } catch {
+      last = `Gemini timeout on ${model}`; // too slow: try the next, faster model
+      continue;
+    }
+    if (res.status === 400 && 'thinkingConfig' in thinking && !model.includes('2.5')) {
+      lowThink[model] = true; // this model does not know thinkingLevel: ask it again without
+      i--;
+      continue;
+    }
     if (res.status === 404) {
       out[model] = 'gone'; // this model no longer exists for this key
       continue;

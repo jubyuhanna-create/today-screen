@@ -85,9 +85,9 @@ export default function Phone() {
       const r = await api.think({ text, source: 'phone' });
       handle(r, false);
       setDraft('');
-    } catch {
-      // AI not reachable: still keep the thought, as a plain task for today.
-      await api.create({ text, kind: 'task', due_date: today }).then(() => { setToast('Added as written'); setDraft(''); }).catch((e) => setToast(msg(e)));
+    } catch (e) {
+      // Keep what was typed so nothing is lost; the + button still adds it by hand.
+      setToast(msg(e));
     }
     setBusy(false);
     refresh();

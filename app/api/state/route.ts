@@ -28,6 +28,7 @@ export async function GET() {
     google,
     summary: summary && summary.date === today ? summary : null,
     channel: s.demo ? null : channelName(),
+    version: process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'dev',
     demo: s.demo,
   };
   return Response.json(body, { headers: { 'Cache-Control': 'no-store' } });

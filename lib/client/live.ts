@@ -5,15 +5,22 @@ import { api } from './api';
 import type { State } from '../types';
 
 // Loads state, then keeps it fresh: Supabase broadcast ping first, polling as a safety net.
-export function useLiveState(pollMs = 30000) {
+export function useLiveState(pollMs = 30000, autoReload = false) {
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const topicRef = useRef<string | null>(null);
+  const versionRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const s = await api.state();
+      // A new version was deployed: reload so the screen gets it without anyone touching the remote.
+      if (autoReload && versionRef.current && s.version && s.version !== versionRef.current) {
+        location.reload();
+        return s;
+      }
+      versionRef.current = s.version;
       setState(s);
       setError(null);
       return s;
@@ -21,7 +28,7 @@ export function useLiveState(pollMs = 30000) {
       setError(e instanceof Error ? e.message : 'Offline');
       return null;
     }
-  }, []);
+  }, [autoReload]);
 
   useEffect(() => {
     refresh();

@@ -4,7 +4,7 @@ import { actionToInput, think } from '@/lib/gemini';
 import { store } from '@/lib/store';
 import { createEvent, deleteEvent, isConnected, upcomingEvents, updateEvent } from '@/lib/google';
 import type { CalEvent } from '@/lib/types';
-import { isoDay } from '@/lib/time';
+import { TZ, isoDay } from '@/lib/time';
 
 export const maxDuration = 60;
 
@@ -46,7 +46,19 @@ export async function POST(req: Request) {
   for (const a of result.actions) {
     try {
       if (a.op === 'add_event' || a.op === 'update_event' || a.op === 'delete_event') {
-        if (!calendar) continue;
+        if (!calendar) {
+          // No calendar connected: keep the appointment as a task at that day and time instead of losing it.
+          if (a.op === 'add_event' && a.text && a.start && a.text.length <= 120) {
+            const when = new Date(a.start);
+            const day = isNaN(when.getTime()) ? null : isoDay(when);
+            const time = a.all_day || /^\d{4}-\d{2}-\d{2}$/.test(a.start) || isNaN(when.getTime())
+              ? null
+              : new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(when);
+            const it = await s.create({ kind: 'task', text: a.text, due_date: day ?? a.start.slice(0, 10), due_time: time, source });
+            applied.push(it.id);
+          }
+          continue;
+        }
         const ev = { title: a.text || undefined, start: a.start || undefined, end: a.end, allDay: !!a.all_day, location: a.location };
         if (a.op === 'add_event') {
           if (!ev.title || !ev.start || ev.title.length > 120) continue;

@@ -39,5 +39,6 @@ export interface State {
   google: 'off' | 'connected' | 'not-configured' | 'error';
   summary: Summary | null;
   channel: string | null;
+  version: string;
   demo: boolean;
 }

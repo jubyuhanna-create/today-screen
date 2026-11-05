@@ -61,7 +61,7 @@ export default function TV() {
 }
 
 function Screen() {
-  const { state, refresh, error } = useLiveState(20000);
+  const { state, refresh, error } = useLiveState(20000, true);
   const now = useNow(1000);
   const [voice, setVoice] = useState<Voice>({ s: 'idle' });
   const [level, setLevel] = useState(0);
