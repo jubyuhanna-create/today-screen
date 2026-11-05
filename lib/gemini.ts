@@ -141,7 +141,7 @@ async function call(parts: unknown[], schema: unknown, system: string) {
           responseSchema: schema,
           temperature: 0.2,
           thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 1500,
+          maxOutputTokens: 4096,
         },
       }),
     },
@@ -151,9 +151,14 @@ async function call(parts: unknown[], schema: unknown, system: string) {
     throw new Error(`Gemini ${res.status}: ${body.slice(0, 300)}`);
   }
   const data = await res.json();
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('');
-  if (!text) throw new Error('Gemini returned nothing');
-  return JSON.parse(text);
+  const cand = data?.candidates?.[0];
+  const text: string | undefined = cand?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('');
+  if (!text) throw new Error(`Gemini returned nothing (${cand?.finishReason || data?.promptFeedback?.blockReason || 'no reason'})`);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Gemini reply was cut off (${cand?.finishReason || 'bad JSON'})`);
+  }
 }
 
 export async function think(

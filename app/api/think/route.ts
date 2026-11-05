@@ -31,7 +31,12 @@ export async function POST(req: Request) {
     result = await think({ text: body.text, audio: body.audio, mime: body.mime }, items, events, calendar);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return Response.json({ error: msg.includes('GEMINI_API_KEY') ? 'Add your Gemini key in Vercel first' : 'The AI did not answer. Try again' , detail: msg }, { status: 502 });
+    console.error('think failed:', msg);
+    const why = msg.includes('GEMINI_API_KEY') ? 'Add your Gemini key in Vercel first'
+      : /429|quota|RESOURCE_EXHAUSTED/i.test(msg) ? 'Gemini daily limit reached. Try again later'
+      : /timeout|abort/i.test(msg) ? 'The AI took too long. Try again'
+      : 'The AI did not answer: ' + msg.slice(0, 140);
+    return Response.json({ error: why, detail: msg }, { status: 502 });
   }
 
   const ids = new Set(items.map((i) => i.id));
