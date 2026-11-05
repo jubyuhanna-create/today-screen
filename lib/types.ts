@@ -23,9 +23,20 @@ export interface Summary {
   text: string;
 }
 
+export interface CalEvent {
+  id: string;
+  title: string;
+  start: string; // ISO date-time, or YYYY-MM-DD for all-day
+  end: string;
+  allDay: boolean;
+  location: string | null;
+}
+
 export interface State {
   today: string;
   items: Item[];
+  events: CalEvent[];
+  google: 'off' | 'connected' | 'not-configured' | 'error';
   summary: Summary | null;
   channel: string | null;
   demo: boolean;

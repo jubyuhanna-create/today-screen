@@ -1,4 +1,4 @@
-import type { Item } from '../types';
+import type { CalEvent, Item } from '../types';
 import { addDays } from '../time';
 
 const byTask = (a: Item, b: Item) =>
@@ -58,4 +58,34 @@ export function relTime(iso: string, now = new Date()) {
 export function clock(iso: string) {
   const tz = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
   return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+}
+
+// ---------- Calendar ----------
+
+
+const TZV = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
+
+export function localDayOf(iso: string) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZV }).format(new Date(iso));
+}
+
+/** Events that happen on a given day (YYYY-MM-DD), all-day first, then by start. */
+export function eventsOn(events: CalEvent[], day: string) {
+  return events
+    .filter((e) => (e.allDay ? e.start <= day && day < e.end : localDayOf(e.start) === day))
+    .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start));
+}
+
+export function eventTime(e: CalEvent) {
+  if (e.allDay) return 'All day';
+  return `${clock(e.start)}–${clock(e.end)}`;
+}
+
+export function isPast(e: CalEvent, now = new Date()) {
+  return !e.allDay && new Date(e.end).getTime() < now.getTime();
+}
+
+/** The next timed event today that has not started yet, or is happening now. */
+export function nextEvent(events: CalEvent[], today: string, now = new Date()) {
+  return eventsOn(events, today).find((e) => !e.allDay && new Date(e.end).getTime() > now.getTime()) || null;
 }

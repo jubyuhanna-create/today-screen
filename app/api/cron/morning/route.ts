@@ -1,6 +1,7 @@
 import { ping } from '@/lib/broadcast';
 import { summarize } from '@/lib/gemini';
 import { store } from '@/lib/store';
+import { isConnected, upcomingEvents } from '@/lib/google';
 import { isoDay } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,10 @@ export async function GET(req: Request) {
   const items = await s.list();
   let text = '';
   try {
-    text = await summarize(items);
+    let events: Awaited<ReturnType<typeof upcomingEvents>> = [];
+    const calendar = await isConnected().catch(() => false);
+    if (calendar) events = await upcomingEvents().catch(() => []);
+    text = await summarize(items, events, calendar);
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : 'Summary failed' }, { status: 502 });
   }

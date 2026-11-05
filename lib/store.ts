@@ -23,6 +23,8 @@ export interface Store {
   remove(id: string): Promise<void>;
   getSummary(): Promise<Summary | null>;
   setSummary(s: Summary): Promise<void>;
+  getMeta<T>(key: string): Promise<T | null>;
+  setMeta(key: string, value: unknown): Promise<void>;
 }
 
 // ---------- Supabase ----------
@@ -67,12 +69,24 @@ class SupaStore implements Store {
   }
 
   async getSummary() {
-    const { data } = await this.db.from('meta').select('value').eq('key', 'summary').maybeSingle();
-    return (data?.value as Summary) ?? null;
+    return this.getMeta<Summary>('summary');
   }
 
   async setSummary(s: Summary) {
-    await this.db.from('meta').upsert({ key: 'summary', value: s, updated_at: new Date().toISOString() });
+    await this.setMeta('summary', s);
+  }
+
+  async getMeta<T>(key: string) {
+    const { data } = await this.db.from('meta').select('value').eq('key', key).maybeSingle();
+    return (data?.value as T) ?? null;
+  }
+
+  async setMeta(key: string, value: unknown) {
+    if (value === null) {
+      await this.db.from('meta').delete().eq('key', key);
+      return;
+    }
+    await this.db.from('meta').upsert({ key, value, updated_at: new Date().toISOString() });
   }
 }
 
@@ -135,8 +149,11 @@ class MemoryStore implements Store {
   }
 
   async remove(id: string) { this.items = this.items.filter((x) => x.id !== id); }
+  meta: Record<string, unknown> = {};
   async getSummary() { return this.summary; }
   async setSummary(s: Summary) { this.summary = s; }
+  async getMeta<T>(key: string) { return (this.meta[key] as T) ?? null; }
+  async setMeta(key: string, value: unknown) { if (value === null) delete this.meta[key]; else this.meta[key] = value; }
 }
 
 const g = globalThis as unknown as { __todayStore?: Store };

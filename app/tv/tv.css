@@ -169,12 +169,18 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 }
 .tv-demo { left: 6.5rem; right: auto; }
 
-/* Morning, 07 to 12: deep sea blue, warm sand accent */
-.tv-morning { --bg: #16324a; --accent: #ffd08a; --accent-soft: rgba(255, 208, 138, 0.18); --panel: #10263a; }
-/* Afternoon, 12 to 17: deep sage green, soft gold */
-.tv-afternoon { --bg: #1c3a34; --accent: #f2d07c; --accent-soft: rgba(242, 208, 124, 0.18); --panel: #132b26; }
-/* Evening, 17 to 23: dusk violet, soft coral */
-.tv-evening { --bg: #28234a; --accent: #ffb197; --accent-soft: rgba(255, 177, 151, 0.18); --panel: #1c1838; }
+/* Day, 07 to 23: clear blue, yellow text */
+.tv-morning, .tv-afternoon, .tv-evening {
+  --bg: #1f5aa6;
+  --ink: #ffd84a;
+  --ink-2: rgba(255, 216, 74, 0.74);
+  --ink-3: rgba(255, 216, 74, 0.42);
+  --line: rgba(255, 255, 255, 0.16);
+  --panel: #174a8c;
+  --accent: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.14);
+  --summary: rgba(255, 216, 74, 0.9);
+}
 
 /* Night, 23 to 07: black and white only, dimmed so it does not light the room */
 .tv-night {
@@ -217,3 +223,14 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 .tv-answer-q { font-size: 1.5rem; color: var(--ink-2); }
 .tv-answer-a { font-size: 2.5rem; line-height: 1.35; letter-spacing: -0.01em; }
 .tv-answer .tv-bidi { text-align: start; }
+
+/* Calendar events */
+.tv-ev-bar { flex: none; width: 2.3rem; display: flex; justify-content: center; }
+.tv-ev-bar::before { content: ''; width: 0.38rem; height: 2.5rem; border-radius: 1rem; background: var(--accent); }
+.tv-event.is-done .tv-ev-bar::before { background: var(--ink-3); }
+.tv-event.is-live { background: var(--accent-soft); border-radius: 0.8rem; }
+.tv-next { border-left-color: var(--ink); }
+.tv-next .tv-reminder-when { color: var(--ink-2); }
+.tv-next + .tv-reminder { margin-top: 1.6rem; }
+.tv-mini li.is-event { align-items: center; }
+.tv-mini-bar { flex: none; width: 0.3rem; height: 1.3em; border-radius: 1rem; background: var(--accent); margin-right: -0.3rem; }

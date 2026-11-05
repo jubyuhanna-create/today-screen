@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/client/api';
 import { useLiveState, useNow } from '@/lib/client/live';
-import { group, relTime, shortDay } from '@/lib/client/view';
+import { eventTime, eventsOn, group, isPast, nextEvent, relTime, shortDay } from '@/lib/client/view';
 import { Recorder } from '@/lib/client/wav';
+import { addDays } from '@/lib/time';
 import { speak, stopSpeaking } from '@/lib/client/speak';
 import { DAYS, keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
-import type { Item } from '@/lib/types';
+import type { CalEvent, Item } from '@/lib/types';
 import { ScheduleView } from '@/components/ScheduleView';
 import './tv.css';
 
@@ -186,7 +187,11 @@ function Screen() {
   const tomorrowKey = keyForJsDay((new Date(now.toLocaleString('en-US', { timeZone: TZ })).getDay() + 1) % 7);
   const schedLabel = schedule === todayKey ? 'Today' : schedule === tomorrowKey ? 'Tomorrow' : 'Timetable';
 
-  const visible = g ? g.todayTasks.slice(0, 7) : [];
+  const evToday = state && today ? eventsOn(state.events, today) : [];
+  const evTomorrow = state && today ? eventsOn(state.events, addDays(today, 1)) : [];
+  const upNext = state && today ? nextEvent(state.events, today, now) : null;
+  const room = Math.max(2, 7 - evToday.length);
+  const visible = g ? g.todayTasks.slice(0, room) : [];
   const hidden = g ? g.todayTasks.length - visible.length : 0;
   const reminder = g?.nextReminder;
   const reminderLabel = reminder ? relTime(reminder.remind_at!, now) : '';
@@ -204,6 +209,13 @@ function Screen() {
           {state?.summary?.text ?? (g && g.total === 0 ? 'Nothing planned yet. Press OK and say what is on your mind.' : '')}
         </p>
 
+        {upNext && (
+          <div className={`tv-reminder tv-next${relTime(upNext.start, now) === 'Now' || new Date(upNext.start) <= now ? ' is-now' : ''}`}>
+            <span className="tv-reminder-when">{new Date(upNext.start) <= now ? 'Happening now' : relTime(upNext.start, now)}, {eventTime(upNext)}</span>
+            <span className="tv-reminder-text" dir="auto">{upNext.title}</span>
+          </div>
+        )}
+
         {reminder && (
           <div className={`tv-reminder${reminderLabel === 'Now' ? ' is-now' : ''}`}>
             <span className="tv-reminder-when">{reminderLabel}</span>
@@ -219,17 +231,25 @@ function Screen() {
         </header>
 
         <ul className="tv-list">
+          {evToday.map((e) => <EventRow key={e.id} e={e} now={now} />)}
           {visible.map((t) => <Row key={t.id} item={t} today={today!} now={now} />)}
-          {g && g.total === 0 && <li className="tv-empty">Your day is clear.</li>}
+          {g && g.total === 0 && evToday.length === 0 && <li className="tv-empty">Your day is clear.</li>}
         </ul>
         {hidden > 0 && <p className="tv-more">{hidden} more on your phone</p>}
 
         <div className="tv-bottom">
           <div>
             <h2>Tomorrow</h2>
-            {g && g.tomorrowTasks.length > 0 ? (
+            {g && (g.tomorrowTasks.length > 0 || evTomorrow.length > 0) ? (
               <ul className="tv-mini">
-                {g.tomorrowTasks.slice(0, 3).map((t) => (
+                {evTomorrow.slice(0, 3).map((e) => (
+                  <li key={e.id} className="is-event">
+                    <i className="tv-mini-bar" aria-hidden="true" />
+                    <span dir="auto" className="tv-bidi">{e.title}</span>
+                    <time>{e.allDay ? 'All day' : eventTime(e).split('–')[0]}</time>
+                  </li>
+                ))}
+                {g.tomorrowTasks.slice(0, Math.max(0, 3 - evTomorrow.length)).map((t) => (
                   <li key={t.id}>
                     <span dir="auto" className="tv-bidi">{t.text}</span>
                     {t.due_time && <time>{t.due_time}</time>}
@@ -265,6 +285,18 @@ function Screen() {
       {error && <div className="tv-offline">Reconnecting</div>}
       {state?.demo && <div className="tv-demo">Demo data. Add your Supabase keys to go live.</div>}
     </main>
+  );
+}
+
+function EventRow({ e, now }: { e: CalEvent; now: Date }) {
+  const past = isPast(e, now);
+  const live = !e.allDay && !past && new Date(e.start) <= now;
+  return (
+    <li className={`tv-row tv-event${past ? ' is-done' : ''}${live ? ' is-live' : ''}`}>
+      <span className="tv-ev-bar" aria-hidden="true" />
+      <span className="tv-text tv-bidi" dir="auto">{e.title}</span>
+      <time className="tv-meta">{eventTime(e)}</time>
+    </li>
   );
 }
 

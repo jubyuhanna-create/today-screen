@@ -208,3 +208,19 @@ html:has(.ph) { background: #f2f2f7; }
 @keyframes ph-up { from { transform: translateY(100%); } }
 @keyframes ph-drop { from { opacity: 0; transform: translate(-50%, -12px); } }
 @keyframes ph-shimmer { to { background-position: -200% 0; } }
+
+/* Calendar */
+.ph-events { margin-bottom: 12px; }
+.ph-evbar { flex: none; width: 24px; display: flex; justify-content: center; }
+.ph-evbar::before { content: ''; width: 4px; height: 26px; border-radius: 4px; background: var(--amber); }
+.ph-row.is-done .ph-evbar::before { background: var(--ink-3); }
+.ph-events .ph-row-body { cursor: default; }
+.ph-connect {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 26px 0 0; height: 50px; border-radius: 12px;
+  background: var(--card); color: var(--amber); font-weight: 600; text-decoration: none;
+}
+.ph-connect svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.ph-connect.is-error { color: var(--red); font-weight: 500; font-size: 15px; height: auto; padding: 14px; text-align: center; }
+.ph-foot { margin: 26px 4px 0; font-size: 13px; color: var(--ink-2); }
+.ph-foot .ph-link { font-size: 13px; }

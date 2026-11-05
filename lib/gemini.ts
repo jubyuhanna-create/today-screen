@@ -1,11 +1,16 @@
-import type { Item, ItemInput } from './types';
+import type { CalEvent, Item, ItemInput } from './types';
 import { addDays, isoDay, nowDescription, offset } from './time';
 import { scheduleForPrompt } from './schedule';
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 export interface Action {
-  op: 'add' | 'complete' | 'reopen' | 'update' | 'delete';
+  op: 'add' | 'complete' | 'reopen' | 'update' | 'delete' | 'add_event' | 'update_event' | 'delete_event';
+  event_id?: string | null;
+  start?: string | null;
+  end?: string | null;
+  all_day?: boolean | null;
+  location?: string | null;
   id?: string | null;
   kind?: 'task' | 'idea' | 'reminder' | null;
   text?: string | null;
@@ -50,6 +55,13 @@ Task rules:
 - remind_at: full ISO 8601 with his UTC offset, only for reminders. "in 20 minutes" is relative to now.
 - category: one or two plain English words for ideas (e.g. Content, Hardware, School, Business). Null for tasks.
 - update: include only the fields that change, plus id.
+
+Google Calendar (only when the context says it is connected):
+- Appointments, meetings, lessons, trips, birthdays, anything he will ATTEND at a date or time goes to the calendar with add_event, not a task. Things he has to DO stay tasks. Short timed nudges ("remind me in 20 minutes") stay reminders.
+- add_event: text is the event title in his language, start is ISO 8601 with his UTC offset, end only if he said a length or end time (default is one hour). For a whole day with no time, set all_day true and start to YYYY-MM-DD.
+- update_event and delete_event: use the exact event_id from the calendar list. Moving an event keeps its length unless he says otherwise.
+- He can ask about his calendar ("what do I have Sunday", "when is the dentist"); answer from the calendar list.
+- When the calendar is not connected, put timed appointments in tasks with due_date and due_time.
 - If what he said contains nothing actionable, return no actions.
 - transcript: what he said, verbatim, in the original language.
 - language: ar, he, en, or mixed.
@@ -69,7 +81,12 @@ const SCHEMA = {
       items: {
         type: 'OBJECT',
         properties: {
-          op: { type: 'STRING', enum: ['add', 'complete', 'reopen', 'update', 'delete'] },
+          op: { type: 'STRING', enum: ['add', 'complete', 'reopen', 'update', 'delete', 'add_event', 'update_event', 'delete_event'] },
+          event_id: { type: 'STRING', nullable: true },
+          start: { type: 'STRING', nullable: true },
+          end: { type: 'STRING', nullable: true },
+          all_day: { type: 'BOOLEAN', nullable: true },
+          location: { type: 'STRING', nullable: true },
           id: { type: 'STRING', nullable: true },
           kind: { type: 'STRING', enum: ['task', 'idea', 'reminder'], nullable: true },
           text: { type: 'STRING', nullable: true },
@@ -89,7 +106,7 @@ const SCHEMA = {
   propertyOrdering: ['transcript', 'language', 'intent', 'actions', 'answer', 'schedule_day', 'reply', 'summary'],
 };
 
-function context(items: Item[]) {
+function context(items: Item[], events: CalEvent[] = [], calendar = false) {
   const today = isoDay();
   const open = items
     .filter((i) => !i.done)
@@ -102,7 +119,9 @@ Open items:
 ${JSON.stringify(open)}
 
 School timetable:
-${scheduleForPrompt()}`;
+${scheduleForPrompt()}
+
+Google Calendar: ${calendar ? 'connected. Upcoming events:\n' + JSON.stringify(events.map((e) => ({ event_id: e.id, title: e.title, start: e.start, end: e.end, all_day: e.allDay, location: e.location }))) : 'not connected.'}`;
 }
 
 async function call(parts: unknown[], schema: unknown, system: string) {
@@ -140,8 +159,10 @@ async function call(parts: unknown[], schema: unknown, system: string) {
 export async function think(
   input: { text?: string; audio?: string; mime?: string },
   items: Item[],
+  events: CalEvent[] = [],
+  calendar = false,
 ): Promise<ThinkResult> {
-  const parts: unknown[] = [{ text: context(items) }];
+  const parts: unknown[] = [{ text: context(items, events, calendar) }];
   if (input.audio) {
     parts.push({ text: 'He said (audio):' });
     parts.push({ inlineData: { mimeType: input.mime || 'audio/wav', data: input.audio } });
@@ -155,9 +176,9 @@ export async function think(
   return r;
 }
 
-export async function summarize(items: Item[]) {
+export async function summarize(items: Item[], events: CalEvent[] = [], calendar = false) {
   const r = await call(
-    [{ text: context(items) + '\nWrite only the morning summary for today. Nothing was said; return no actions, empty transcript.' }],
+    [{ text: context(items, events, calendar) + '\nWrite only the morning summary for today. Nothing was said; return no actions, empty transcript.' }],
     SCHEMA,
     SYSTEM,
   );

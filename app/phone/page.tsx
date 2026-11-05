@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/client/api';
 import { useLiveState, useNow } from '@/lib/client/live';
-import { group, relTime, shortDay } from '@/lib/client/view';
+import { eventTime, eventsOn, group, isPast, relTime, shortDay } from '@/lib/client/view';
 import { Recorder } from '@/lib/client/wav';
 import { addDays } from '@/lib/time';
-import type { Item, ItemInput } from '@/lib/types';
+import type { CalEvent, Item, ItemInput } from '@/lib/types';
 import { speak, stopSpeaking } from '@/lib/client/speak';
 import type { ThinkReply } from '@/lib/client/api';
 import { keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
@@ -38,6 +38,20 @@ export default function Phone() {
       setToast(r.reply || 'Nothing to change');
     }
   };
+
+  // Coming back from Google sign-in.
+  useEffect(() => {
+    const p = new URLSearchParams(location.search).get('google');
+    if (!p) return;
+    const msgs: Record<string, string> = {
+      connected: 'Google Calendar connected',
+      cancelled: 'Google Calendar was not connected',
+      error: 'Google sign-in failed. Try again',
+      'not-configured': 'Add your Google keys in Vercel first',
+    };
+    setToast(msgs[p] || null);
+    history.replaceState(null, '', '/phone');
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -102,6 +116,10 @@ export default function Phone() {
         </button>
       )}
 
+      {eventsOn(state.events, today).length > 0 && (
+        <EventList events={eventsOn(state.events, today)} now={now} />
+      )}
+
       <List items={g.todayTasks} today={today} onToggle={(i) => patch(i.id, { done: !i.done })} onOpen={setEditing} empty="Nothing for today. Type or talk below." />
 
       {g.tomorrowTasks.length > 0 && (
@@ -116,6 +134,13 @@ export default function Phone() {
           <List items={g.laterTasks} today={today} showDay onToggle={(i) => patch(i.id, { done: true })} onOpen={setEditing} />
         </>
       )}
+      {upcoming(state.events, today).length > 0 && (
+        <>
+          <h2 className="ph-h2">Calendar</h2>
+          <EventList events={upcoming(state.events, today)} now={now} today={today} showDay />
+        </>
+      )}
+
       {g.ideas.length > 0 && (
         <>
           <h2 className="ph-h2">Ideas</h2>
@@ -127,6 +152,22 @@ export default function Phone() {
           <h2 className="ph-h2">Reminders</h2>
           <List items={g.reminders} today={today} onToggle={(i) => patch(i.id, { done: true })} onOpen={setEditing} />
         </>
+      )}
+
+      {state.google === 'off' && (
+        <a className="ph-connect" href="/api/google/connect">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+          Connect Google Calendar
+        </a>
+      )}
+      {state.google === 'error' && (
+        <a className="ph-connect is-error" href="/api/google/connect">Google Calendar stopped answering. Connect again</a>
+      )}
+      {state.google === 'connected' && (
+        <p className="ph-foot">
+          Google Calendar is connected.{' '}
+          <button className="ph-link" onClick={async () => { await fetch('/api/google/disconnect', { method: 'POST' }); refresh(); setToast('Google Calendar disconnected'); }}>Disconnect</button>
+        </p>
       )}
 
       <div className="ph-spacer" />
@@ -256,6 +297,33 @@ function List({ items, today, onToggle, onOpen, empty, showDay }: {
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+function upcoming(events: CalEvent[], today: string) {
+  const days = Array.from({ length: 14 }, (_, i) => addDays(today, i + 1));
+  const seen = new Set<string>();
+  const out: (CalEvent & { day: string })[] = [];
+  for (const d of days) for (const e of eventsOn(events, d)) if (!seen.has(e.id)) { seen.add(e.id); out.push({ ...e, day: d }); }
+  return out.slice(0, 12);
+}
+
+function EventList({ events, now, today, showDay }: { events: (CalEvent & { day?: string })[]; now: Date; today?: string; showDay?: boolean }) {
+  return (
+    <ul className="ph-list ph-events">
+      {events.map((e) => (
+        <li key={e.id} className={`ph-row${isPast(e, now) ? ' is-done' : ''}`}>
+          <span className="ph-evbar" aria-hidden="true" />
+          <div className="ph-row-body">
+            <span className="ph-row-text"><span dir="auto" className="ph-bidi">{e.title}</span></span>
+            <span className="ph-meta">
+              {showDay && e.day && today ? shortDay(e.day, today) + ', ' : ''}
+              {e.allDay ? 'All day' : eventTime(e).split('–')[0]}
+            </span>
+          </div>
+        </li>
+      ))}
     </ul>
   );
 }
