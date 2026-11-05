@@ -23,7 +23,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error('Passcode needed');
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Something went wrong');
+  if (!res.ok) throw new Error(data.error || (res.status === 504 ? 'The AI took too long. Try again' : res.status === 413 ? 'That recording was too long' : `Server error ${res.status}`));
   return data as T;
 }
 
