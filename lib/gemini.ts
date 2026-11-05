@@ -2,7 +2,6 @@ import type { CalEvent, Item, ItemInput } from './types';
 import { addDays, isoDay, nowDescription, offset } from './time';
 import { scheduleForPrompt } from './schedule';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 export interface Action {
   op: 'add' | 'complete' | 'reopen' | 'update' | 'delete' | 'add_event' | 'update_event' | 'delete_event';
@@ -124,41 +123,70 @@ ${scheduleForPrompt()}
 Google Calendar: ${calendar ? 'connected. Upcoming events:\n' + JSON.stringify(events.map((e) => ({ event_id: e.id, title: e.title, start: e.start, end: e.end, all_day: e.allDay, location: e.location }))) : 'not connected.'}`;
 }
 
+// Each model has its own free daily quota (about 20 a day), so when one runs out we use the next.
+const MODELS = Array.from(new Set([
+  ...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : []),
+  ...(process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash').split(','),
+].map((m) => m.trim()).filter(Boolean)));
+
+// Models that ran out today, so we skip them without asking again. Quotas reset at midnight Pacific time.
+const gq = globalThis as unknown as { __geminiOut?: Record<string, string> };
+function quotaDay() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+}
+
 async function call(parts: unknown[], schema: unknown, system: string) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY is not set');
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: 'POST',
-      signal: AbortSignal.timeout(40000),
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.2,
-          thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 4096,
-        },
-      }),
-    },
-  );
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Gemini ${res.status}: ${body.slice(0, 300)}`);
+  const out = (gq.__geminiOut ??= {});
+  const day = quotaDay();
+  const order = [...MODELS.filter((m) => out[m] !== day), ...MODELS.filter((m) => out[m] === day)];
+  const started = Date.now();
+  let last = '';
+
+  for (const model of order) {
+    const left = 50000 - (Date.now() - started);
+    if (left < 5000) break; // stay inside Vercel's 60 seconds
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        signal: AbortSignal.timeout(Math.min(30000, left)),
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.2,
+            // Thinking off on 2.5 models: faster, and these answers do not need it. 2.0 models reject this field.
+            ...(model.includes('2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            maxOutputTokens: 4096,
+          },
+        }),
+      },
+    );
+    if (res.status === 429 || res.status === 503 || res.status === 500) {
+      if (res.status === 429) out[model] = day;
+      last = `Gemini ${res.status} on ${model}`;
+      continue; // try the next model
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Gemini ${res.status} on ${model}: ${body.slice(0, 300)}`);
+    }
+    const data = await res.json();
+    const cand = data?.candidates?.[0];
+    const text: string | undefined = cand?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('');
+    if (!text) throw new Error(`Gemini returned nothing (${cand?.finishReason || data?.promptFeedback?.blockReason || 'no reason'})`);
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Gemini reply was cut off (${cand?.finishReason || 'bad JSON'})`);
+    }
   }
-  const data = await res.json();
-  const cand = data?.candidates?.[0];
-  const text: string | undefined = cand?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('');
-  if (!text) throw new Error(`Gemini returned nothing (${cand?.finishReason || data?.promptFeedback?.blockReason || 'no reason'})`);
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`Gemini reply was cut off (${cand?.finishReason || 'bad JSON'})`);
-  }
+  throw new Error(last.includes('429') ? 'RESOURCE_EXHAUSTED: all free models are used up for today' : last || 'Gemini timeout');
 }
 
 export async function think(
