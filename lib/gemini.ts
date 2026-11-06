@@ -21,7 +21,8 @@ export interface Action {
 }
 
 export interface ThinkResult {
-  intent: 'organize' | 'answer' | 'schedule';
+  intent: 'organize' | 'answer' | 'schedule' | 'weather';
+  weather_day: number | null;
   answer: string;
   schedule_day: string | null;
   transcript: string;
@@ -37,6 +38,7 @@ You receive what he said (audio or text), his current open items, and his school
 First decide intent:
 - organize: he is adding, finishing, moving or changing tasks, ideas or reminders.
 - schedule: he wants to SEE his school timetable for a day ("جدول بكرا", "what do I have Saturday", "מערכת של יום שלישי"). Set schedule_day to mon, tue, wed, thu, fri or sat. "Tomorrow" and "today" are relative to now; after 15:00 "the schedule" with no day means the next school day. Sunday has no school, so Sunday means Monday. Also write a one sentence answer summarizing that day.
+- weather: he wants to SEE the weather or forecast ("الطقس بكرا", "will it rain this week", "מזג האוויר"). Set weather_day: 0 today, 1 tomorrow, up to 6. Also write a one or two sentence answer from the forecast.
 - answer: anything else. A question, a chat, a calculation, advice, a fact. Answer it yourself like a smart friend.
 One message can be organize plus a question; then do the actions and also fill answer.
 
@@ -70,7 +72,8 @@ Google Calendar (only when the context says it is connected):
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
-    intent: { type: 'STRING', enum: ['organize', 'answer', 'schedule'] },
+    intent: { type: 'STRING', enum: ['organize', 'answer', 'schedule', 'weather'] },
+    weather_day: { type: 'INTEGER', nullable: true },
     answer: { type: 'STRING' },
     schedule_day: { type: 'STRING', enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'], nullable: true },
     transcript: { type: 'STRING' },
@@ -105,7 +108,7 @@ const SCHEMA = {
   propertyOrdering: ['transcript', 'language', 'intent', 'actions', 'answer', 'schedule_day', 'reply', 'summary'],
 };
 
-function context(items: Item[], events: CalEvent[] = [], calendar = false) {
+function context(items: Item[], events: CalEvent[] = [], calendar = false, weather = '') {
   const today = isoDay();
   const open = items
     .filter((i) => !i.done)
@@ -119,6 +122,9 @@ ${JSON.stringify(open)}
 
 School timetable:
 ${scheduleForPrompt()}
+
+Weather forecast for his town:
+${weather || 'not available right now.'}
 
 Google Calendar: ${calendar ? 'connected. Upcoming events:\n' + JSON.stringify(events.map((e) => ({ event_id: e.id, title: e.title, start: e.start, end: e.end, all_day: e.allDay, location: e.location }))) : 'not connected.'}`;
 }
@@ -221,8 +227,9 @@ export async function think(
   items: Item[],
   events: CalEvent[] = [],
   calendar = false,
+  weather = '',
 ): Promise<ThinkResult> {
-  const parts: unknown[] = [{ text: context(items, events, calendar) }];
+  const parts: unknown[] = [{ text: context(items, events, calendar, weather) }];
   if (input.audio) {
     parts.push({ text: 'He said (audio):' });
     parts.push({ inlineData: { mimeType: input.mime || 'audio/wav', data: input.audio } });
@@ -232,13 +239,13 @@ export async function think(
   const r = (await call(parts, SCHEMA, SYSTEM)) as ThinkResult;
   r.actions = Array.isArray(r.actions) ? r.actions : [];
   r.answer = typeof r.answer === 'string' ? r.answer : '';
-  if (!['organize', 'answer', 'schedule'].includes(r.intent)) r.intent = r.actions.length ? 'organize' : 'answer';
+  if (!['organize', 'answer', 'schedule', 'weather'].includes(r.intent)) r.intent = r.actions.length ? 'organize' : 'answer';
   return r;
 }
 
-export async function summarize(items: Item[], events: CalEvent[] = [], calendar = false) {
+export async function summarize(items: Item[], events: CalEvent[] = [], calendar = false, weather = '') {
   const r = await call(
-    [{ text: context(items, events, calendar) + '\nWrite only the morning summary for today. Nothing was said; return no actions, empty transcript.' }],
+    [{ text: context(items, events, calendar, weather) + '\nWrite only the morning summary for today. Nothing was said; return no actions, empty transcript.' }],
     SCHEMA,
     SYSTEM,
   );

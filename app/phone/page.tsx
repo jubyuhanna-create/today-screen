@@ -11,6 +11,10 @@ import { speak, stopSpeaking } from '@/lib/client/speak';
 import type { ThinkReply } from '@/lib/client/api';
 import { keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
 import { ScheduleView } from '@/components/ScheduleView';
+import { WeatherView } from '@/components/WeatherView';
+import { WeatherIcon } from '@/components/WeatherIcon';
+import { useForecast } from '@/lib/client/forecast';
+import { NotifyToggle } from '@/components/NotifyToggle';
 import './phone.css';
 
 const TZ = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
@@ -24,11 +28,16 @@ export default function Phone() {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState('');
   const [schedule, setSchedule] = useState<DayKey | null>(null);
+  const [weatherIdx, setWeatherIdx] = useState<number | null>(null);
+  const forecast = useForecast();
   const [answer, setAnswer] = useState<{ q: string; a: string } | null>(null);
 
   // What happens after the AI answers, the same for typing and talking.
   const handle = (r: ThinkReply, spoken: boolean) => {
-    if (r.intent === 'schedule' && r.schedule_day) {
+    if (r.intent === 'weather') {
+      setWeatherIdx(Math.max(0, Math.min(6, r.weather_day ?? 0)));
+      if (spoken) speak(r.answer);
+    } else if (r.intent === 'schedule' && r.schedule_day) {
       setSchedule(r.schedule_day as DayKey);
       if (spoken) speak(r.answer);
     } else if (r.intent === 'answer' && r.answer) {
@@ -99,10 +108,15 @@ export default function Phone() {
         <p className="ph-date">{date}</p>
         <div className="ph-titlebar">
           <h1>Today</h1>
+          <div className="ph-top-btns">
+          <button className="ph-tt" onClick={() => setWeatherIdx(0)} aria-label="Weather">
+            {forecast ? <><WeatherIcon sky={forecast.now.sky} day={forecast.now.day} size="18px" />{forecast.now.temp}°</> : 'Weather'}
+          </button>
           <button className="ph-tt" onClick={() => setSchedule(nextSchoolDay(new Date(), TZ))}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
             Timetable
           </button>
+          </div>
         </div>
         {g.total > 0 && <p className="ph-count">{g.doneCount} of {g.total} done</p>}
         {state.summary && <p className="ph-summary">{state.summary.text}</p>}
@@ -169,6 +183,8 @@ export default function Phone() {
           <button className="ph-link" onClick={async () => { await fetch('/api/google/disconnect', { method: 'POST' }); refresh(); setToast('Google Calendar disconnected'); }}>Disconnect</button>
         </p>
       )}
+
+      <NotifyToggle onToast={setToast} />
 
       <div className="ph-spacer" />
 
@@ -246,6 +262,18 @@ export default function Phone() {
               onDay={setSchedule}
               label={schedule === keyForJsDay(localDay()) ? 'Today' : schedule === keyForJsDay((localDay() + 1) % 7) ? 'Tomorrow' : 'Timetable'}
             />
+          </div>
+        </div>
+      )}
+
+      {weatherIdx !== null && (
+        <div className="ph-sheet-wrap" onClick={(e) => e.target === e.currentTarget && setWeatherIdx(null)}>
+          <div className="ph-sheet ph-sched">
+            <div className="ph-sheet-bar">
+              <span />
+              <button className="ph-link ph-link-strong" onClick={() => setWeatherIdx(null)}>Done</button>
+            </div>
+            <WeatherView variant="phone" forecast={forecast} index={weatherIdx} onIndex={setWeatherIdx} />
           </div>
         </div>
       )}

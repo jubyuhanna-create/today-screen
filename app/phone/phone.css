@@ -216,6 +216,7 @@ html:has(.ph) { background: #f2f2f7; }
 .ph-row.is-done .ph-evbar::before { background: var(--ink-3); }
 .ph-events .ph-row-body { cursor: default; }
 .ph-connect {
+  width: 100%; border: 0; font: inherit; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   margin: 26px 0 0; height: 50px; border-radius: 12px;
   background: var(--card); color: var(--amber); font-weight: 600; text-decoration: none;
@@ -224,3 +225,9 @@ html:has(.ph) { background: #f2f2f7; }
 .ph-connect.is-error { color: var(--red); font-weight: 500; font-size: 15px; height: auto; padding: 14px; text-align: center; }
 .ph-foot { margin: 26px 4px 0; font-size: 13px; color: var(--ink-2); }
 .ph-foot .ph-link { font-size: 13px; }
+
+.ph-top-btns { display: flex; gap: 8px; }
+.ph {
+  --wx-ink: var(--ink); --wx-ink-2: var(--ink-2); --wx-accent: var(--amber);
+  --wx-block: var(--card); --wx-sel: var(--amber); --wx-sel-ink: #fff; --wx-rain: #0a84ff;
+}

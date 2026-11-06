@@ -10,12 +10,13 @@ import { speak, stopSpeaking } from '@/lib/client/speak';
 import { DAYS, keyForJsDay, nextSchoolDay, type DayKey } from '@/lib/schedule';
 import type { CalEvent, Item } from '@/lib/types';
 import { ScheduleView } from '@/components/ScheduleView';
+import { WeatherView } from '@/components/WeatherView';
+import { useForecast } from '@/lib/client/forecast';
+import { SKY_WORD } from '@/lib/weather';
 import './tv.css';
 
 const TZ = process.env.NEXT_PUBLIC_TZ || 'Asia/Jerusalem';
 const CITY = process.env.NEXT_PUBLIC_CITY || 'Nazareth';
-const LAT = process.env.NEXT_PUBLIC_LAT || '32.70';
-const LON = process.env.NEXT_PUBLIC_LON || '35.30';
 
 type Voice =
   | { s: 'idle' }
@@ -65,15 +66,22 @@ function Screen() {
   const now = useNow(1000);
   const [voice, setVoice] = useState<Voice>({ s: 'idle' });
   const [level, setLevel] = useState(0);
-  const weather = useWeather();
+  const forecast = useForecast();
+  const [weatherIdx, setWeatherIdx] = useState<number | null>(null);
   const recRef = useRef<Recorder | null>(null);
   const hideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [schedule, setSchedule] = useState<DayKey | null>(null);
   const [schedTouch, setSchedTouch] = useState(0);
+  const weatherRef = useRef<number | null>(null);
+  const [alert, setAlert] = useState<{ title: string; text: string } | null>(null);
+  const alertedRef = useRef<Set<string>>(new Set());
+  weatherRef.current = weatherIdx;
 
   const openSchedule = useCallback((d: DayKey) => { setSchedule(d); setSchedTouch(Date.now()); }, []);
   const closeAll = useCallback(() => {
     setSchedule(null);
+    setWeatherIdx(null);
+    setAlert(null);
     setVoice((v) => (v.s === 'answer' || v.s === 'done' || v.s === 'error' ? { s: 'idle' } : v));
     stopSpeaking();
   }, []);
@@ -83,7 +91,14 @@ function Screen() {
     try {
       const r = await api.think({ audio, mime, source: 'tv' });
       refresh();
-      if (r.intent === 'schedule' && r.schedule_day) {
+      if (r.intent === 'weather') {
+        setSchedule(null);
+        setWeatherIdx(Math.max(0, Math.min(6, r.weather_day ?? 0)));
+        setSchedTouch(Date.now());
+        setVoice({ s: 'idle' });
+        speak(r.answer);
+      } else if (r.intent === 'schedule' && r.schedule_day) {
+        setWeatherIdx(null);
         openSchedule(r.schedule_day as DayKey);
         setVoice({ s: 'idle' });
         speak(r.answer);
@@ -112,10 +127,63 @@ function Screen() {
     return () => { delete window.__today; };
   }, [send, closeAll]);
 
+  // When a reminder, a timed task or a calendar event is due: chime, say it, and show it big for a minute.
+  useEffect(() => {
+    if (!state) return;
+    const t = now.getTime();
+    const hm = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(now);
+    const found: { key: string; title: string; text: string }[] = [];
+    for (const i of state.items) {
+      if (i.done) continue;
+      if (i.kind === 'reminder' && i.remind_at) {
+        const at = new Date(i.remind_at).getTime();
+        if (at <= t && at > t - 60000) found.push({ key: 'r' + i.id + i.remind_at, title: 'Reminder', text: i.text });
+      }
+      if (i.kind === 'task' && i.due_time && i.due_date === state.today && i.due_time === hm) {
+        found.push({ key: 't' + i.id + i.due_date + i.due_time, title: `Now, ${hm}`, text: i.text });
+      }
+    }
+    for (const e of state.events) {
+      if (e.allDay) continue;
+      const at = new Date(e.start).getTime();
+      if (at <= t && at > t - 60000) found.push({ key: 'e' + e.id + e.start, title: `Starting now${e.location ? ', ' + e.location : ''}`, text: e.title });
+    }
+    const fresh = found.find((f) => !alertedRef.current.has(f.key));
+    if (!fresh) return;
+    alertedRef.current.add(fresh.key);
+    setAlert({ title: fresh.title, text: fresh.text });
+    chime();
+    setTimeout(() => speak(fresh.text), 900);
+  }, [now, state]);
+
+  useEffect(() => {
+    if (!alert) return;
+    const t = setTimeout(() => setAlert(null), 60000);
+    return () => clearTimeout(t);
+  }, [alert]);
+
   // Remote arrows: right opens the timetable, left and right change the day, Back closes.
   useEffect(() => {
     const order = DAYS.map((d) => d.key);
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSchedTouch(Date.now());
+        setSchedule(null);
+        setWeatherIdx((w) => (w === null ? 0 : w));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        closeAll();
+        return;
+      }
+      if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && weatherRef.current !== null) {
+        e.preventDefault();
+        setSchedTouch(Date.now());
+        setWeatherIdx((w) => (w === null ? 0 : Math.max(0, Math.min(6, w + (e.key === 'ArrowRight' ? 1 : -1)))));
+        return;
+      }
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         e.preventDefault();
         setSchedTouch(Date.now());
@@ -132,12 +200,12 @@ function Screen() {
     return () => window.removeEventListener('keydown', onKey);
   }, [closeAll]);
 
-  // The timetable closes itself after a minute and a half untouched.
+  // The timetable and weather close themselves after a minute and a half untouched.
   useEffect(() => {
-    if (!schedule) return;
-    const t = setTimeout(() => setSchedule(null), 90000);
+    if (!schedule && weatherIdx === null) return;
+    const t = setTimeout(() => { setSchedule(null); setWeatherIdx(null); }, 90000);
     return () => clearTimeout(t);
-  }, [schedule, schedTouch]);
+  }, [schedule, weatherIdx, schedTouch]);
 
   // In a normal browser (testing on a laptop), Enter or Space records with the browser mic.
   useEffect(() => {
@@ -202,7 +270,7 @@ function Screen() {
         <div className="tv-time" aria-label={time}>{time}</div>
         <div className="tv-date">
           {date}
-          {weather && <span className="tv-weather">{weather.temp}° {weather.word} in {CITY}</span>}
+          {forecast && <span className="tv-weather">{forecast.now.temp}° {SKY_WORD[forecast.now.sky].toLowerCase()} in {CITY}, high {forecast.days[0].max}°</span>}
         </div>
 
         <p className="tv-summary" key={state?.summary?.text}>
@@ -274,10 +342,24 @@ function Screen() {
         </div>
       </section>
 
+      {weatherIdx !== null && (
+        <div className="tv-sched tv-wx">
+          <WeatherView variant="tv" forecast={forecast} index={weatherIdx} onIndex={setWeatherIdx} />
+          <p className="tv-sched-hint">Left and right change the day. Up or Back closes.</p>
+        </div>
+      )}
+
       {schedule && (
         <div className="tv-sched">
           <ScheduleView variant="tv" day={schedule} label={schedLabel} onDay={openSchedule} />
           <p className="tv-sched-hint">Left and right change the day. Back closes.</p>
+        </div>
+      )}
+
+      {alert && (
+        <div className="tv-alert" role="alert">
+          <p className="tv-alert-title">{alert.title}</p>
+          <p className="tv-alert-text tv-bidi" dir="auto">{alert.text}</p>
         </div>
       )}
 
@@ -318,7 +400,7 @@ function Row({ item, today, now }: { item: Item; today: string; now: Date }) {
 
 function VoiceBar({ voice, level }: { voice: Voice; level: number }) {
   if (voice.s === 'idle') {
-    return <div className="tv-hint">OK to talk, right arrow for your timetable</div>;
+    return <div className="tv-hint">OK to talk, right for timetable, down for weather</div>;
   }
   return (
     <div className={`tv-voice is-${voice.s}`} role="status">
@@ -357,28 +439,23 @@ function Wave({ level }: { level: number }) {
   );
 }
 
-function useWeather() {
-  const [w, setW] = useState<{ temp: number; word: string } | null>(null);
-  useEffect(() => {
-    const load = () =>
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code`)
-        .then((r) => r.json())
-        .then((d) => setW({ temp: Math.round(d.current.temperature_2m), word: weatherWord(d.current.weather_code) }))
-        .catch(() => {});
-    load();
-    const t = setInterval(load, 30 * 60000);
-    return () => clearInterval(t);
-  }, []);
-  return w;
+/** A soft two-note chime, made in the browser so no sound file is needed. */
+function chime() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AC();
+    [[880, 0], [1318.5, 0.18]].forEach(([f, d]) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, ctx.currentTime + d);
+      g.gain.linearRampToValueAtTime(0.25, ctx.currentTime + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 1.2);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + d);
+      o.stop(ctx.currentTime + d + 1.3);
+    });
+    setTimeout(() => ctx.close(), 2000);
+  } catch {}
 }
-
-function weatherWord(c: number) {
-  if (c === 0) return 'clear';
-  if (c <= 2) return 'partly cloudy';
-  if (c === 3) return 'cloudy';
-  if (c <= 48) return 'fog';
-  if (c <= 67 || (c >= 80 && c <= 82)) return 'rain';
-  if (c <= 77) return 'snow';
-  return 'storms';
-}
-

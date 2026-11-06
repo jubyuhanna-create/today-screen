@@ -1,0 +1,46 @@
+/* Shared by TV (em follows the TV rem) and phone. Colors come from --wx-* set by the page. */
+.wx { --wx-chart: 5.5em; display: flex; flex-direction: column; gap: 1.6em; color: var(--wx-ink); }
+.wx-phone { font-size: 15px; --wx-chart: 4.2em; gap: 1.2em; }
+.wx-loading { color: var(--wx-ink-2); }
+
+.wx-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 2em; flex-wrap: wrap; }
+.wx-now { display: flex; align-items: center; gap: 0.35em; font-size: 4.6em; line-height: 1; }
+.wx-now > svg { flex: none; }
+.wx-label { margin: 0 0 0.25em; font-size: 0.24em; font-weight: 600; color: var(--wx-accent); }
+.wx-big { margin: 0; font-size: 1em; font-weight: 200; letter-spacing: -0.04em; display: flex; flex-direction: column; }
+.wx-big span { font-size: 0.26em; font-weight: 500; letter-spacing: -0.01em; color: var(--wx-ink-2); margin-top: 0.3em; }
+.wx-phone .wx-now { font-size: 3.6em; }
+
+.wx-facts { display: grid; grid-template-columns: repeat(2, auto); gap: 0.7em 2.2em; margin: 0; font-size: 1.15em; }
+.wx-facts div { display: flex; flex-direction: column; gap: 0.15em; }
+.wx-facts dt { font-size: 0.78em; color: var(--wx-ink-2); }
+.wx-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wx-phone .wx-facts { width: 100%; font-size: 0.95em; grid-template-columns: repeat(2, 1fr); }
+
+.wx-hours { position: relative; display: grid; padding: 2.4em 0 0; border-radius: 1em; background: var(--wx-block); }
+.wx-line { position: absolute; left: 0; right: 0; top: 2.4em; width: 100%; height: var(--wx-chart); overflow: visible; }
+.wx-line polyline { stroke: var(--wx-accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+.wx-hour {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35em;
+  padding: calc(var(--wx-chart) + 0.6em) 0 0.8em; font-variant-numeric: tabular-nums; min-width: 0;
+}
+.wx-htemp { position: absolute; left: 0; right: 0; text-align: center; transform: translateY(-2.1em); }
+.wx-htemp b { font-size: 1.05em; font-weight: 600; }
+.wx-dot { position: absolute; left: 50%; width: 0.55em; height: 0.55em; margin: -0.275em 0 0 -0.275em; border-radius: 50%; background: var(--wx-accent); }
+.wx-rain { font-size: 0.85em; color: var(--wx-rain); min-height: 1.2em; }
+.wx-time { font-size: 0.9em; color: var(--wx-ink-2); }
+
+.wx-days { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.5em; }
+.wx-days button {
+  width: 100%; border: 0; background: var(--wx-block); color: inherit; font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0.35em; padding: 0.8em 0.2em; border-radius: 0.9em;
+}
+.wx-days button.on { background: var(--wx-sel); color: var(--wx-sel-ink); }
+.wx-dname { font-size: 0.95em; font-weight: 600; }
+.wx-range { font-size: 1em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-range b { font-weight: 700; }
+.wx-drain { font-size: 0.8em; color: var(--wx-rain); }
+.wx-days button.on .wx-drain { color: inherit; }
+.wx-phone .wx-days { gap: 0.3em; }
+.wx-phone .wx-days button { padding: 0.6em 0; font-size: 0.85em; }
+.wx-phone .wx-range { font-size: 0.86em; letter-spacing: -0.02em; }

@@ -5,9 +5,10 @@ export interface ThinkReply {
   transcript: string;
   reply: string;
   language: string;
-  intent: 'organize' | 'answer' | 'schedule';
+  intent: 'organize' | 'answer' | 'schedule' | 'weather';
   answer: string;
   schedule_day: string | null;
+  weather_day: number | null;
   changed: string[];
 }
 

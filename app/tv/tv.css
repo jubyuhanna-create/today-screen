@@ -21,6 +21,13 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
   --sch-accent: var(--accent);
   --sch-mine-bg: var(--accent-soft);
   --sch-mine-ink: var(--accent);
+  --wx-ink: var(--ink);
+  --wx-ink-2: var(--ink-2);
+  --wx-accent: var(--accent);
+  --wx-block: rgba(255, 255, 255, 0.07);
+  --wx-sel: var(--ink);
+  --wx-sel-ink: var(--bg);
+  --wx-rain: #9fd4ff;
   position: relative;
   height: 100vh;
   overflow: hidden;
@@ -234,3 +241,18 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 .tv-next + .tv-reminder { margin-top: 1.6rem; }
 .tv-mini li.is-event { align-items: center; }
 .tv-mini-bar { flex: none; width: 0.3rem; height: 1.3em; border-radius: 1rem; background: var(--accent); margin-right: -0.3rem; }
+
+/* Weather, full screen */
+.tv-wx .wx { font-size: 1.15rem; flex: 1; justify-content: space-between; --wx-chart: 15em; }
+.tv-wx .wx-htemp b { font-size: 1.25em; }
+
+/* Something is due right now */
+.tv-alert {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8;
+  width: 60%; padding: 3rem 3.6rem; border-radius: 2.4rem;
+  background: var(--panel); box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5);
+  animation: tv-pop 0.5s cubic-bezier(.2, .9, .25, 1.2) both;
+}
+.tv-alert-title { margin: 0 0 1rem; font-size: 1.8rem; font-weight: 600; color: var(--accent); }
+.tv-alert-text { margin: 0; font-size: 4rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
+@keyframes tv-pop { from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); } }

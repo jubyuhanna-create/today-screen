@@ -4,6 +4,7 @@ import { actionToInput, think } from '@/lib/gemini';
 import { store } from '@/lib/store';
 import { createEvent, deleteEvent, isConnected, upcomingEvents, updateEvent } from '@/lib/google';
 import type { CalEvent } from '@/lib/types';
+import { forecastForPrompt, getForecast } from '@/lib/weather';
 import { TZ, isoDay, offset } from '@/lib/time';
 import { cleanText } from '@/lib/gemini';
 
@@ -21,15 +22,20 @@ export async function POST(req: Request) {
   const items = await s.list();
   let events: CalEvent[] = [];
   let calendar = false;
-  try {
-    calendar = await isConnected();
-    if (calendar) events = await upcomingEvents();
-  } catch {
-    calendar = false; // calendar trouble never blocks tasks
-  }
+  const [, weather] = await Promise.all([
+    (async () => {
+      try {
+        calendar = await isConnected();
+        if (calendar) events = await upcomingEvents();
+      } catch {
+        calendar = false; // calendar trouble never blocks tasks
+      }
+    })(),
+    getForecast(3000).then(forecastForPrompt).catch(() => ''), // weather is a bonus, never a blocker
+  ]);
   let result;
   try {
-    result = await think({ text: body.text, audio: body.audio, mime: body.mime }, items, events, calendar);
+    result = await think({ text: body.text, audio: body.audio, mime: body.mime }, items, events, calendar, weather);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('think failed:', msg);
@@ -111,6 +117,7 @@ export async function POST(req: Request) {
     intent: result.intent,
     answer: result.answer,
     schedule_day: result.intent === 'schedule' ? result.schedule_day : null,
+    weather_day: result.intent === 'weather' ? Math.max(0, Math.min(6, Number(result.weather_day) || 0)) : null,
     changed: applied,
   });
 }
