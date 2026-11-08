@@ -4,7 +4,7 @@
       "invocationName": "katia",
       "intents": [
         {
-          "name": "AskIntent",
+          "name": "SayRemindMeIntent",
           "slots": [
             {
               "name": "query",
@@ -12,40 +12,595 @@
             }
           ],
           "samples": [
-            "to {query}",
-            "add {query}",
-            "remind me {query}",
-            "remind me to {query}",
-            "what {query}",
-            "what's {query}",
-            "when {query}",
-            "where {query}",
-            "who {query}",
-            "how {query}",
-            "is {query}",
-            "are {query}",
-            "will {query}",
-            "do {query}",
-            "does {query}",
-            "tell me {query}",
-            "show {query}",
-            "show me {query}",
-            "open {query}",
-            "put {query}",
-            "set {query}",
-            "schedule {query}",
-            "delete {query}",
-            "remove {query}",
-            "move {query}",
-            "cancel my {query}",
-            "i {query}",
-            "i have {query}",
-            "my {query}",
-            "about {query}",
-            "for {query}",
-            "that {query}",
-            "the {query}",
+            "remind me {query}"
+          ]
+        },
+        {
+          "name": "SayRemindMeToIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "remind me to {query}"
+          ]
+        },
+        {
+          "name": "SaySetAReminderIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "set a reminder {query}"
+          ]
+        },
+        {
+          "name": "SaySetAReminderToIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "set a reminder to {query}"
+          ]
+        },
+        {
+          "name": "SayAddIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "add {query}"
+          ]
+        },
+        {
+          "name": "SayPutIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "put {query}"
+          ]
+        },
+        {
+          "name": "SayToIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "to {query}"
+          ]
+        },
+        {
+          "name": "SayPleaseIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
             "please {query}"
+          ]
+        },
+        {
+          "name": "SayWhatIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "what {query}"
+          ]
+        },
+        {
+          "name": "SayWhatsIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "what's {query}"
+          ]
+        },
+        {
+          "name": "SayWhatIsIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "what is {query}"
+          ]
+        },
+        {
+          "name": "SayWhenIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "when {query}"
+          ]
+        },
+        {
+          "name": "SayWhensIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "when's {query}"
+          ]
+        },
+        {
+          "name": "SayWhereIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "where {query}"
+          ]
+        },
+        {
+          "name": "SayWhoIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "who {query}"
+          ]
+        },
+        {
+          "name": "SayHowIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "how {query}"
+          ]
+        },
+        {
+          "name": "SayHowMuchIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "how much {query}"
+          ]
+        },
+        {
+          "name": "SayHowManyIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "how many {query}"
+          ]
+        },
+        {
+          "name": "SayIsIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "is {query}"
+          ]
+        },
+        {
+          "name": "SayAreIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "are {query}"
+          ]
+        },
+        {
+          "name": "SayWillIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "will {query}"
+          ]
+        },
+        {
+          "name": "SayDoIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "do {query}"
+          ]
+        },
+        {
+          "name": "SayDoesIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "does {query}"
+          ]
+        },
+        {
+          "name": "SayCanYouIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "can you {query}"
+          ]
+        },
+        {
+          "name": "SayTellMeIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "tell me {query}"
+          ]
+        },
+        {
+          "name": "SayShowIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "show {query}"
+          ]
+        },
+        {
+          "name": "SayShowMeIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "show me {query}"
+          ]
+        },
+        {
+          "name": "SayOpenIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "open {query}"
+          ]
+        },
+        {
+          "name": "SaySetIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "set {query}"
+          ]
+        },
+        {
+          "name": "SayScheduleIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "schedule {query}"
+          ]
+        },
+        {
+          "name": "SayDeleteIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "delete {query}"
+          ]
+        },
+        {
+          "name": "SayRemoveIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "remove {query}"
+          ]
+        },
+        {
+          "name": "SayMoveIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "move {query}"
+          ]
+        },
+        {
+          "name": "SayCancelIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "cancel {query}"
+          ]
+        },
+        {
+          "name": "SayMarkIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "mark {query}"
+          ]
+        },
+        {
+          "name": "SayFinishIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "finish {query}"
+          ]
+        },
+        {
+          "name": "SayIIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "i {query}"
+          ]
+        },
+        {
+          "name": "SayImIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "i'm {query}"
+          ]
+        },
+        {
+          "name": "SayIHaveIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "i have {query}"
+          ]
+        },
+        {
+          "name": "SayINeedToIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "i need to {query}"
+          ]
+        },
+        {
+          "name": "SayMyIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "my {query}"
+          ]
+        },
+        {
+          "name": "SayAboutIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "about {query}"
+          ]
+        },
+        {
+          "name": "SayForIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "for {query}"
+          ]
+        },
+        {
+          "name": "SayThatIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "that {query}"
+          ]
+        },
+        {
+          "name": "SayTheIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "the {query}"
+          ]
+        },
+        {
+          "name": "SayCallIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "call {query}"
+          ]
+        },
+        {
+          "name": "SayBuyIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "buy {query}"
+          ]
+        },
+        {
+          "name": "SayStudyIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "study {query}"
+          ]
+        },
+        {
+          "name": "SayMeetingIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "meeting {query}"
+          ]
+        },
+        {
+          "name": "SayAppointmentIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "appointment {query}"
           ]
         },
         {

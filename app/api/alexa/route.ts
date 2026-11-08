@@ -4,6 +4,7 @@ import { CITY, SKY_WORD, getForecast } from '@/lib/weather';
 import { store } from '@/lib/store';
 import { ping } from '@/lib/broadcast';
 import { TZ } from '@/lib/time';
+import { CARRIER_BY_INTENT } from '@/lib/alexa-carriers';
 
 export const maxDuration = 40;
 
@@ -52,7 +53,10 @@ export async function POST(req: Request) {
     return say('Say things like: add tidy my room today, remind me in ten minutes to call dad, what is my schedule tomorrow, or what is the weather on Sunday.', false, 'What do you need?');
   }
 
-  const query = intent.slots?.query?.value?.trim();
+  // Put back the words Alexa cut off, so "remind me ..." stays a reminder.
+  const rest = intent.slots?.query?.value?.trim();
+  const carrier = CARRIER_BY_INTENT[intent.name];
+  const query = rest ? (carrier && carrier !== 'to' && carrier !== 'please' ? `${carrier} ${rest}` : rest) : undefined;
   if (!query) return say('What should I do?', false, 'Tell me a task, a reminder, or a question.');
 
   // Weather is answered straight from the forecast, no AI: instant and always works.
