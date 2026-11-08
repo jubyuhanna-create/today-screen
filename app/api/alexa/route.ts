@@ -1,5 +1,9 @@
 import { after } from 'next/server';
 import { runThink } from '@/lib/think';
+import { CITY, SKY_WORD, getForecast } from '@/lib/weather';
+import { store } from '@/lib/store';
+import { ping } from '@/lib/broadcast';
+import { TZ } from '@/lib/time';
 
 export const maxDuration = 40;
 
@@ -51,10 +55,16 @@ export async function POST(req: Request) {
   const query = intent.slots?.query?.value?.trim();
   if (!query) return say('What should I do?', false, 'Tell me a task, a reminder, or a question.');
 
-  // Alexa waits at most 8 seconds. If the AI is not done in about 6, Alexa says so
+  // Weather is answered straight from the forecast, no AI: instant and always works.
+  if (/\b(weather|rain|raining|temperature|forecast|hot|cold|sunny|degrees)\b/i.test(query)) {
+    const quick = await weatherAnswer(query).catch(() => null);
+    if (quick) return say(quick);
+  }
+
+  // Alexa waits at most 8 seconds, and a cold start can eat 2 of them. If the AI is not done in about 6, Alexa says so
   // and the work carries on in the background: it is still saved and shows on the screen.
   const work = runThink({ text: query }, 'alexa', 30000);
-  const r = await Promise.race([work, new Promise<null>((ok) => setTimeout(() => ok(null), 6200))]);
+  const r = await Promise.race([work, new Promise<null>((ok) => setTimeout(() => ok(null), 4500))]);
   if (!r) {
     after(async () => { await work.catch(() => {}); });
     return say('Got it. I am still working on it, check your screen.');
@@ -63,4 +73,37 @@ export async function POST(req: Request) {
   const b = r.body;
   const spoken = b.answer || b.reply || 'Done.';
   return say(spoken);
+}
+
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+async function weatherAnswer(query: string) {
+  const q = query.toLowerCase();
+  const todayJs = new Date(new Date().toLocaleString('en-US', { timeZone: TZ })).getDay();
+  let day = 0;
+  if (/tomorrow/.test(q)) day = 1;
+  else if (/week/.test(q)) day = -1;
+  else {
+    const w = WEEKDAYS.findIndex((d) => q.includes(d));
+    if (w >= 0) day = (w - todayJs + 7) % 7;
+  }
+  const f = await getForecast(2500);
+  let text: string;
+  if (day === -1) {
+    const rainy = f.days.filter((d) => d.rain >= 50).map((d) => new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }));
+    const hi = Math.max(...f.days.map((d) => d.max)), lo = Math.min(...f.days.map((d) => d.min));
+    text = `This week in ${CITY}: between ${lo} and ${hi} degrees. ${rainy.length ? `Rain is likely on ${rainy.join(' and ')}.` : 'No real rain expected.'}`;
+    day = 0;
+  } else {
+    const d = f.days[Math.min(day, f.days.length - 1)];
+    const name = day === 0 ? 'Today' : day === 1 ? 'Tomorrow' : new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const now = day === 0 ? ` It is ${f.now.temp} degrees now.` : '';
+    text = `${name} in ${CITY}: ${SKY_WORD[d.sky].toLowerCase()}, ${d.min} to ${d.max} degrees, ${d.rain} percent chance of rain.${now}`;
+  }
+  // Open the weather screen on the TV too.
+  await store().setMeta('last_reply', {
+    at: Date.now(), source: 'alexa', transcript: query, reply: '', intent: 'weather', answer: text, schedule_day: null, weather_day: day,
+  });
+  await ping();
+  return text;
 }
