@@ -1,6 +1,7 @@
+import { after } from 'next/server';
 import { runThink } from '@/lib/think';
 
-export const maxDuration = 10;
+export const maxDuration = 40;
 
 // Alexa custom skill endpoint. "Alexa, ask Katia to ..." lands here as text.
 // Only requests from your own skill are accepted (ALEXA_SKILL_ID), and only fresh ones.
@@ -50,8 +51,14 @@ export async function POST(req: Request) {
   const query = intent.slots?.query?.value?.trim();
   if (!query) return say('What should I do?', false, 'Tell me a task, a reminder, or a question.');
 
-  // Alexa waits at most 8 seconds, so the AI gets about 6.
-  const r = await runThink({ text: query }, 'alexa', 6000);
+  // Alexa waits at most 8 seconds. If the AI is not done in about 6, Alexa says so
+  // and the work carries on in the background: it is still saved and shows on the screen.
+  const work = runThink({ text: query }, 'alexa', 30000);
+  const r = await Promise.race([work, new Promise<null>((ok) => setTimeout(() => ok(null), 6200))]);
+  if (!r) {
+    after(async () => { await work.catch(() => {}); });
+    return say('Got it. I am still working on it, check your screen.');
+  }
   if (!r.ok) return say(/limit/i.test(r.error) ? 'The AI is out of requests for today.' : 'The AI took too long. Try again.');
   const b = r.body;
   const spoken = b.answer || b.reply || 'Done.';
