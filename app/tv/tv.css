@@ -176,17 +176,18 @@ html.tv-html { font-size: calc(100vw / 120); background: #000; }
 }
 .tv-demo { left: 6.5rem; right: auto; }
 
-/* Day, 07 to 23: clear blue, yellow text */
+/* Day, 07 to 23: deep petrol, warm ivory text, amber highlights. Calm, easy on the eyes all day. */
 .tv-morning, .tv-afternoon, .tv-evening {
-  --bg: #1f5aa6;
-  --ink: #ffd84a;
-  --ink-2: rgba(255, 216, 74, 0.74);
-  --ink-3: rgba(255, 216, 74, 0.42);
-  --line: rgba(255, 255, 255, 0.16);
-  --panel: #174a8c;
-  --accent: #ffffff;
-  --accent-soft: rgba(255, 255, 255, 0.14);
-  --summary: rgba(255, 216, 74, 0.9);
+  --bg: #0f3b40;
+  --ink: #f4eedf;
+  --ink-2: rgba(244, 238, 223, 0.64);
+  --ink-3: rgba(244, 238, 223, 0.36);
+  --line: rgba(244, 238, 223, 0.13);
+  --panel: #0b2e32;
+  --accent: #f2b544;
+  --accent-soft: rgba(242, 181, 68, 0.16);
+  --summary: rgba(244, 238, 223, 0.88);
+  --wx-rain: #8fd3dc;
 }
 
 /* Night, 23 to 07: black and white only, dimmed so it does not light the room */
