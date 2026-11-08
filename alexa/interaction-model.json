@@ -1,0 +1,75 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "katia",
+      "intents": [
+        {
+          "name": "AskIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "to {query}",
+            "add {query}",
+            "remind me {query}",
+            "remind me to {query}",
+            "what {query}",
+            "what's {query}",
+            "when {query}",
+            "where {query}",
+            "who {query}",
+            "how {query}",
+            "is {query}",
+            "are {query}",
+            "will {query}",
+            "do {query}",
+            "does {query}",
+            "tell me {query}",
+            "show {query}",
+            "show me {query}",
+            "open {query}",
+            "put {query}",
+            "set {query}",
+            "schedule {query}",
+            "delete {query}",
+            "remove {query}",
+            "move {query}",
+            "cancel my {query}",
+            "i {query}",
+            "i have {query}",
+            "my {query}",
+            "about {query}",
+            "for {query}",
+            "that {query}",
+            "the {query}",
+            "please {query}"
+          ]
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        }
+      ],
+      "types": []
+    }
+  }
+}

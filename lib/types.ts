@@ -32,6 +32,17 @@ export interface CalEvent {
   location: string | null;
 }
 
+export interface LastReply {
+  at: number;
+  source: string;
+  transcript: string;
+  reply: string;
+  intent: string;
+  answer: string;
+  schedule_day: string | null;
+  weather_day: number | null;
+}
+
 export interface State {
   today: string;
   items: Item[];
@@ -40,5 +51,6 @@ export interface State {
   summary: Summary | null;
   channel: string | null;
   version: string;
+  lastReply: LastReply | null;
   demo: boolean;
 }

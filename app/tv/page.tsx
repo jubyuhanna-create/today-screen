@@ -127,6 +127,26 @@ function Screen() {
     return () => { delete window.__today; };
   }, [send, closeAll]);
 
+  // Something said to Alexa ("Alexa, ask Katia ...") shows up here too. Alexa already speaks it.
+  const seenReply = useRef<number>(Date.now());
+  useEffect(() => {
+    const r = state?.lastReply;
+    if (!r || r.at <= seenReply.current) return;
+    seenReply.current = r.at;
+    setSchedTouch(Date.now());
+    if (r.intent === 'weather') {
+      setSchedule(null);
+      setWeatherIdx(Math.max(0, Math.min(6, r.weather_day ?? 0)));
+    } else if (r.intent === 'schedule' && r.schedule_day) {
+      setWeatherIdx(null);
+      setSchedule(r.schedule_day as DayKey);
+    } else if (r.intent === 'answer' && r.answer) {
+      setVoice({ s: 'answer', transcript: r.transcript, answer: r.answer });
+    } else {
+      setVoice({ s: 'done', transcript: r.transcript, reply: r.reply || 'Done' });
+    }
+  }, [state?.lastReply]);
+
   // When a reminder, a timed task or a calendar event is due: chime, say it, and show it big for a minute.
   useEffect(() => {
     if (!state) return;

@@ -142,7 +142,7 @@ function quotaDay() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
 }
 
-async function call(parts: unknown[], schema: unknown, system: string) {
+async function call(parts: unknown[], schema: unknown, system: string, budget = 52000) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY is not set');
   const out = (gq.__geminiOut ??= {});
@@ -156,8 +156,8 @@ async function call(parts: unknown[], schema: unknown, system: string) {
   const lowThink = (gq as { __noLevel?: Record<string, boolean> }).__noLevel ??= {};
   for (let i = 0; i < order.length; i++) {
     const model = order[i];
-    const left = 52000 - (Date.now() - started);
-    if (left < 4000) break; // stay inside Vercel's 60 seconds
+    const left = budget - (Date.now() - started);
+    if (left < Math.min(4000, budget / 3)) break; // stay inside Vercel's 60 seconds
     const thinking = model.includes('2.5')
       ? { thinkingConfig: { thinkingBudget: 0 } } // off: faster, these answers do not need it
       : model.startsWith('gemini-3') && !lowThink[model]
@@ -228,6 +228,7 @@ export async function think(
   events: CalEvent[] = [],
   calendar = false,
   weather = '',
+  budget = 52000,
 ): Promise<ThinkResult> {
   const parts: unknown[] = [{ text: context(items, events, calendar, weather) }];
   if (input.audio) {
@@ -236,7 +237,7 @@ export async function think(
   } else {
     parts.push({ text: 'He typed: ' + (input.text ?? '') });
   }
-  const r = (await call(parts, SCHEMA, SYSTEM)) as ThinkResult;
+  const r = (await call(parts, SCHEMA, SYSTEM, budget)) as ThinkResult;
   r.actions = Array.isArray(r.actions) ? r.actions : [];
   r.answer = typeof r.answer === 'string' ? r.answer : '';
   if (!['organize', 'answer', 'schedule', 'weather'].includes(r.intent)) r.intent = r.actions.length ? 'organize' : 'answer';
